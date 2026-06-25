@@ -13,16 +13,9 @@ uploaded_file = st.sidebar.file_uploader(
     "Upload 'Queries.csv' or 'Pages.csv' from GSC export", type=["csv"]
 )
 
-# Helper function to aggressively clean numeric columns
-def clean_numeric_col(series):
-    # Convert to string, remove commas, spaces, percentage signs, and coerce errors to NaN
-    cleaned = pd.to_numeric(series.astype(str).str.replace(r'[,\s%]', '', regex=True), errors='coerce')
-    # Fill any missing/broken values with 0
-    return cleaned.fillna(0)
-
 if uploaded_file is not None:
     try:
-        # Load data (Skip blank lines and ignore potential corruption)
+        # Load data (Skip blank lines)
         df = pd.read_csv(uploaded_file, encoding='utf-8', skip_blank_lines=True)
         
         # Clean up column names (lowercase and strip spaces)
@@ -34,22 +27,32 @@ if uploaded_file is not None:
             st.error(f"The CSV must contain these columns: {required_cols}. Found columns: {list(df.columns)}")
             st.stop()
         
-        # Force convert all numeric columns to float/int to fix the 'str' vs 'int' bug
-        df['clicks'] = clean_numeric_col(df['clicks']).astype(int)
-        df['impressions'] = clean_numeric_col(df['impressions']).astype(int)
-        df['position'] = clean_numeric_col(df['position']).astype(float)
-        
-        # Handle CTR explicitly (if it was text like '5.2%', clean_numeric_col turned it into 5.2. We want 0.052)
-        if df['ctr'].dtype == object or df['ctr'].max() > 1:
-            df['ctr'] = clean_numeric_col(df['ctr'])
-            # If values are like 52.5 instead of 0.525, divide by 100
-            if df['ctr'].max() > 1:
-                df['ctr'] = df['ctr'] / 100
-
-        # Drop rows where impressions or clicks are 0 due to GSC summary rows at the bottom
         first_col = df.columns[0]
+        
+        # Drop the "Total" summary rows that Google adds to the very bottom
         df = df[df[first_col].notna() & (df[first_col].astype(str).str.strip() != '')]
         df = df[~df[first_col].astype(str).str.contains('Total|Summary', case=False, na=False)]
+
+        # CRITICAL FIX: Convert columns and force errors to 'NaN' (null) instead of keeping them as text strings
+        for col in ['clicks', 'impressions', 'position']:
+            df[col] = df[col].astype(str).str.replace(r'[,\s]', '', regex=True) # strip out commas/spaces
+            df[col] = pd.to_numeric(df[col], errors='coerce') # Force text to actual NaN numbers
+
+        # Clean CTR explicitly
+        df['ctr'] = df['ctr'].astype(str).str.replace(r'[,\s%]', '', regex=True)
+        df['ctr'] = pd.to_numeric(df['ctr'], errors='coerce')
+        # If CTR is listed as a percentage (e.g., 5.2 instead of 0.052), normalize it
+        if df['ctr'].max() > 1:
+            df['ctr'] = df['ctr'] / 100
+
+        # Drop any leftover rows that failed numeric conversion (ensures NO 'str' variables remain in numbers)
+        df = df.dropna(subset=['clicks', 'impressions', 'ctr', 'position'])
+
+        # Now it is safe to convert data types natively
+        df['clicks'] = df['clicks'].astype(int)
+        df['impressions'] = df['impressions'].astype(int)
+        df['position'] = df['position'].astype(float)
+        df['ctr'] = df['ctr'].astype(float)
 
         # Main metrics display
         total_clicks = df['clicks'].sum()
@@ -71,8 +74,8 @@ if uploaded_file is not None:
         st.subheader("🎯 Striking Distance Opportunities (Ranked 11-20)")
         st.markdown("These terms are sitting on page 2 of Google. A minor on-page tweak or internal link could push them to page 1!")
         
-        # Safe numeric filtering
-        striking_df = df[(df['position'] >= 11) & (df['position'] <= 20)].copy()
+        # This operation will absolutely work now because positions are purely float data type
+        striking_df = df[(df['position'] >= 11.0) & (df['position'] <= 20.0)].copy()
         striking_df = striking_df.sort_values(by='impressions', ascending=False)
         
         if not striking_df.empty:
@@ -117,7 +120,7 @@ if uploaded_file is not None:
             st.info("No underperforming high-impression items found.")
 
     except Exception as e:
-        st.error(f"Error parsing file: {e}. Please ensure you are uploading a valid CSV directly exported from GSC.")
+        st.error(f"🚨 Code execution stalled. Error: {e}")
 
 else:
     st.info("👋 Please upload a GSC 'Queries' or 'Pages' CSV file in the sidebar to generate automation insights.")
