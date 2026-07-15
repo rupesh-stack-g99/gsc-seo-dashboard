@@ -35,7 +35,7 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 st.title("🎯 GSC ZIP & CSV SEO Diagnostic Engine")
-st.write("Upload a raw CSV or a direct GSC exported ZIP file. The engine will unpack and analyze your search performance data instantly.")
+st.write("Upload a combined Query-Page map CSV or GSC export to identify keyword conflicts.")
 
 # =========================================================================
 # CONFIGURATION SIDEBAR
@@ -62,8 +62,9 @@ def standardize_df_columns(df):
     """
     df.columns = [col.strip() for col in df.columns]
     
-    page_col = next((col for col in df.columns if col.lower() in ['page', 'landing page', 'urls', 'pages', 'url']), None)
-    query_col = next((col for col in df.columns if col.lower() in ['query', 'keyword', 'search term', 'queries']), None)
+    # Fuzzy match headers
+    page_col = next((col for col in df.columns if col.lower() in ['page', 'landing page', 'urls', 'pages', 'url', 'landing_page']), None)
+    query_col = next((col for col in df.columns if col.lower() in ['query', 'keyword', 'search term', 'queries', 'search_query']), None)
     
     if not page_col or not query_col:
         return None, False
@@ -112,8 +113,7 @@ def standardize_df_columns(df):
 
 def extract_gsc_data_from_file(uploaded_file):
     """
-    Parses both standalone CSVs and GSC ZIP files. 
-    Detects if files within ZIP are unlinked CSV structures.
+    Parses standalone CSVs or zip files.
     """
     filename = uploaded_file.name.lower()
     
@@ -123,7 +123,7 @@ def extract_gsc_data_from_file(uploaded_file):
             with zipfile.ZipFile(uploaded_file) as z:
                 file_list = z.namelist()
                 
-                # Check for combined table files where Queries and Pages are linked
+                # Check for combined files
                 search_results_file = next((f for f in file_list if "search_results.csv" in f.lower() or "search results.csv" in f.lower()), None)
                 
                 if search_results_file:
@@ -131,27 +131,24 @@ def extract_gsc_data_from_file(uploaded_file):
                         df = pd.read_csv(f)
                     return standardize_df_columns(df)
                 
-                # If we only have isolated GSC files (Queries.csv and Pages.csv separately)
+                # If they only uploaded queries and pages separately
                 queries_file = next((f for f in file_list if "queries.csv" in f.lower()), None)
                 pages_file = next((f for f in file_list if "pages.csv" in f.lower()), None)
                 
                 if queries_file and pages_file:
                     st.error("""
-                    ### ⚠️ Unlinked ZIP Structure Detected
-                    You uploaded a default Google Search Console ZIP export.
-                    * GSC's native `Queries.csv` contains **only queries** without URLs.
-                    * GSC's native `Pages.csv` contains **only URLs** without keywords.
+                    ### ⚠️ Incompatible ZIP File Structure
+                    You uploaded a native GSC ZIP file. 
+                    * Google's default `Queries.csv` contains only queries.
+                    * Google's default `Pages.csv` contains only pages.
                     
-                    They cannot be combined automatically because they don't share mapping keys.
+                    They cannot be analyzed because they aren't mapped together.
                     
-                    **How to fix this:**
-                    1. Use a free Google Sheets extension like **Search Analytics for Sheets**.
-                    2. Fetch your data with dimensions grouped by both **Query** and **Page** at the same time.
-                    3. Download that Sheet as a `.csv` file and upload it here!
+                    **How to resolve:** Read the step-by-step instructions below the upload box to obtain a combined Query-Page map.
                     """)
                     return None
                 
-                st.error("❌ Invalid ZIP Archive: No compatible Search Console CSV files found.")
+                st.error("❌ Invalid ZIP Archive: No compatible GSC CSVs found inside.")
                 return None
                 
         except Exception as e:
@@ -160,12 +157,23 @@ def extract_gsc_data_from_file(uploaded_file):
             
     # --- Case 2: Standalone CSV ---
     elif filename.endswith(".csv"):
-        df = pd.read_csv(uploaded_file)
-        result = standardize_df_columns(df)
-        if result[0] is None:
-            st.error("❌ Missing primary columns: Make sure your dataset contains 'Query' and 'Page' columns mapped together.")
+        try:
+            df = pd.read_csv(uploaded_file)
+            result = standardize_df_columns(df)
+            if result is None or result[0] is None:
+                st.error("""
+                ### ❌ Missing Mapped Columns
+                The CSV you uploaded doesn't contain both 'Query' and 'Page' columns.
+                
+                **Your file's actual columns:** `{}`
+                
+                To solve this, please see the guide below on how to export a combined Query-Page CSV.
+                """.format(list(df.columns)))
+                return None
+            return result
+        except Exception as e:
+            st.error(f"Error reading CSV: {e}")
             return None
-        return result
         
     return None
 
@@ -173,9 +181,15 @@ def extract_gsc_data_from_file(uploaded_file):
 # FILE UPLOAD CONSOLE
 # =========================================================================
 st.subheader("📂 Import Search Console Datasets")
-st.write("Upload either a `.csv` query-page map file or the direct `.zip` exported from Google Search Console.")
-
 uploaded_file = st.file_uploader("Upload GSC Export (CSV or ZIP)", type=["csv", "zip"])
+
+# Helper instructions if nothing is uploaded or error occurs
+if uploaded_file is None:
+    st.info("💡 **Tips for exporting your GSC Data:**")
+    st.markdown("""
+    *   **The Problem:** Standard GSC exports separate your Queries and Pages into isolated lists.
+    *   **The Easy Fix:** Install the free **Search Analytics for Sheets** Google Sheets extension, fetch your GSC data grouped by both **Query** and **Page** at the same time, download as a CSV, and drop it here!
+    """)
 
 # =========================================================================
 # PIPELINE EXECUTION
