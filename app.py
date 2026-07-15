@@ -12,7 +12,7 @@ st.set_page_config(
     layout="wide"
 )
 
-# Custom Styling for a modern, clean UI
+# Custom Styling for a modern, clean UI (FIXED: changed unsafe_style_type to unsafe_allow_html)
 st.markdown("""
     <style>
     .metric-box {
@@ -31,7 +31,7 @@ st.markdown("""
         box-shadow: 0 2px 4px rgba(0,0,0,0.05);
     }
     </style>
-""", unsafe_style_type=True)
+""", unsafe_allow_html=True)
 
 st.title("🎯 SEO Cannibalization & De-Optimization Suite")
 st.write("Detect close-proximity ranking conflicts and instantly generate structural SEO directives.")
@@ -80,8 +80,7 @@ def parse_and_standardize_gsc(df):
         return None, False
 
     # 2. Check if this is a Comparison Export
-    # Typically includes columns with '(Last 3 months)' or 'Difference' or 'compare'
-    is_comparison = any('difference' in col.lower() or 'last 3 months' in col.lower() or 'compare' in col.lower() for col in df.columns)
+    is_comparison = any('difference' in col.lower() or 'last' in col.lower() or 'compare' in col.lower() for col in df.columns)
     
     standardized_df = pd.DataFrame()
     standardized_df['Query'] = df[query_col].astype(str).str.strip()
@@ -145,7 +144,6 @@ if uploaded_file is not None:
             clean_df = clean_df[clean_df['Position'] <= MAX_POSITION_LIMIT]
             
             # --- 2. ROLL UP METRICS PER QUERY + URL ---
-            # Grouping to aggregate any anchor fragment pages that were stripped
             rolled_df = clean_df.groupby(['Query', 'Page']).agg({
                 'Clicks': 'sum',
                 'Impressions': 'sum',
@@ -160,9 +158,7 @@ if uploaded_file is not None:
             for query in unique_queries:
                 pages_data = rolled_df[rolled_df['Query'] == query].copy()
                 
-                # Check for multiple URLs ranking for the same query
                 if len(pages_data) > 1:
-                    # Determine Primary URL (Sort by Clicks descending, then Impressions descending)
                     pages_data = pages_data.sort_values(by=['Clicks', 'Impressions'], ascending=[False, False])
                     
                     total_impressions = pages_data['Impressions'].sum()
@@ -174,14 +170,12 @@ if uploaded_file is not None:
                     primary_clicks = int(primary_row['Clicks'])
                     primary_pos = round(primary_row['Position'], 1)
                     
-                    # Loop through all secondary/cannibal pages
                     for index in range(1, len(pages_data)):
                         cannibal_row = pages_data.iloc[index]
                         cannibal_url = cannibal_row['Page']
                         cannibal_clicks = int(cannibal_row['Clicks'])
                         cannibal_pos = round(cannibal_row['Position'], 1)
                         
-                        # Apply Mathematical Proximity Gap Rule: Must rank within MAX_POSITION_GAP (10 positions)
                         pos_diff = abs(primary_pos - cannibal_pos)
                         
                         if pos_diff < MAX_POSITION_GAP:
@@ -203,7 +197,6 @@ if uploaded_file is not None:
             # =========================================================================
             if not final_deopt_df.empty:
                 
-                # Metrics Strip
                 col_m1, col_m2, col_m3 = st.columns(3)
                 with col_m1:
                     st.metric("Total Conflicts Identified", len(final_deopt_df))
@@ -213,7 +206,6 @@ if uploaded_file is not None:
                     avg_gap = round(final_deopt_df['Position Gap'].mean(), 1)
                     st.metric("Average Rank Gap", f"{avg_gap} Positions")
                 
-                # Create downloadable CSV version
                 csv_buffer = io.StringIO()
                 final_deopt_df.to_csv(csv_buffer, index=False)
                 csv_data = csv_buffer.getvalue()
@@ -225,7 +217,6 @@ if uploaded_file is not None:
                     mime="text/csv"
                 )
                 
-                # Main Interactive Grid View
                 st.subheader("📋 Directives: [SEO] To De-Optimize")
                 st.dataframe(final_deopt_df, use_container_width=True)
                 
@@ -235,8 +226,6 @@ if uploaded_file is not None:
                 st.markdown("---")
                 st.subheader("🔥 Strategic SEO Action Plan")
                 
-                # 1. Top 5 Target Pages to Focus Right Now
-                # Group by Primary URL to find which page is losing the most ground or under constant pressure
                 focus_df = final_deopt_df.groupby('Primary URL').agg({
                     'Keyword/Query': 'count',
                     'Primary Clicks': 'sum',
@@ -261,7 +250,7 @@ if uploaded_file is not None:
                             • Aggressor Landing Pages competing: <b>{row['Aggressor Pages']}</b><br/>
                             • Current Organic Click Pool: <b>{row['Estimated Core Clicks']}</b>
                         </div>
-                        """, unsafe_style_type=True)
+                        """, unsafe_allow_html=True) # FIXED: Changed to unsafe_allow_html
                 
                 with col_r:
                     st.markdown("### 🛡️ Critical De-Optimization Playbook")
