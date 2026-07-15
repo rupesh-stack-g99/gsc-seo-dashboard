@@ -154,7 +154,7 @@ st.markdown("""
 st.markdown("""
 <div class="hero-banner">
     <h1>🕵️ Algorithmic SEO Detective (High-Precision Edition)</h1>
-    <p>This upgraded release uses hard semantic scoring filters to map keywords to exact core landing page slugs, identifying mismatched intents with a secondary automated validation flag.</p>
+    <p>This upgraded release uses hard semantic scoring filters to map keywords to exact core landing page slugs, identifying mismatched intents with a dual-validation visibility toggle.</p>
 </div>
 """, unsafe_allow_html=True)
 
@@ -170,6 +170,9 @@ with cfg_col2:
     MIN_IMPR_THRESHOLD = st.number_input("Minimum Impressions Threshold:", min_value=1, value=100)
 with cfg_col3:
     MAX_CANNIBAL_OFFSET = st.slider("Cannibalization Search Space (Pos. Gap):", 1, 15, 6)
+
+# Filter out lower confidence tags to isolate structural elements
+STRICT_MODE = st.checkbox("Show '✓ Confident Match' only (hide unverified warnings)", value=False)
 
 st.markdown("---")
 
@@ -275,7 +278,6 @@ def find_best_url_match_precise(query_row, df_pages, max_offset=6.0):
     query_tokens = [re.sub(r'[^a-z0-9]', '', token) for token in query_str.split()]
     core_nouns = [t for t in query_tokens if len(t) > 2 and t not in ['and', 'for', 'the', 'with', 'near', 'in', 'nj', 'newjersey']]
     
-    # Filter candidates by position first
     candidates = df_pages[
         (df_pages['Position'] >= q_pos - max_offset) & 
         (df_pages['Position'] <= q_pos + max_offset)
@@ -291,39 +293,41 @@ def find_best_url_match_precise(query_row, df_pages, max_offset=6.0):
         url_path = str(p_row['Pages']).lower()
         score = 0
         
-        # Rule 1: Clean token overlap scoring
         token_matches = sum(1 for token in core_nouns if token in url_path)
         score += (token_matches * 5)
         
-        # Rule 2: Strict anchor keyword bonus (e.g., if query has kybella, url MUST have kybella)
         for critical_word in ['kybella', 'earlobe', 'piercing', 'mounjaro', 'tirzepatide', 'botox']:
             if critical_word in query_str:
                 if critical_word in url_path:
-                    score += 20  # Heavy structural weight bonus
+                    score += 20  
                 else:
-                    score -= 15  # Penalty for mismatching core service
+                    score -= 15  
                     
-        # Rule 3: Geo-location alignment check
         for geo in ['weehawken', 'hoboken', 'jersey']:
             if geo in query_str and geo in url_path:
                 score += 5
                 
-        # Rule 4: Small position gap penalty
         score -= (abs(p_row['Position'] - q_pos) * 0.2)
         
         if score > best_score:
             best_score = score
             best_url = p_row['Pages']
             
-    # Confidence analysis validation flag
     is_highly_confident = True
     if best_url:
-        # If none of the actual service nouns are inside the URL, mark as unverified anomaly
         any_token_in_url = any(token in best_url.lower() for token in core_nouns)
         if not any_token_in_url and len(core_nouns) > 0:
             is_highly_confident = False
             
     return best_url if best_url else "Manual GSC Check Required", is_highly_confident
+
+def get_badge_html(confident, strict_mode, fallback_text="⚠️ Low Token Match - Verify URL"):
+    """Helper dynamic HTML rendering block configuration engine"""
+    if confident:
+        return '<span class="verified-tag">✓ Confident Match</span>'
+    elif not strict_mode:
+        return f'<span class="warning-tag">{fallback_text}</span>'
+    return ''
 
 def extract_gsc_payload(uploaded_zip):
     results = {}
@@ -386,6 +390,9 @@ if uploaded_file is not None:
         # === TAB 1: CORE UPDATE HIT DETECTOR ===
         with tab1:
             st.markdown("## Algorithmic Updates Checker")
+            st.markdown("""
+            *This diagnostic analysis measures the systemic stability of the organic profile. By evaluating global ratios of decaying keywords against ascending terms, it assesses whether traffic contractions point toward site-wide algorithmic suppression or minor seasonal turbulence.*
+            """)
             if core_hit_score > 65.0:
                 st.markdown(f"""<div class="directive-card danger"><div class="directive-title">🚨 Systemic Algorithmic Suppression Flagged ({core_hit_score}% Probability)</div></div>""", unsafe_allow_html=True)
             else:
@@ -394,12 +401,15 @@ if uploaded_file is not None:
         # === TAB 2: KEYWORD DECAY ALERTS ===
         with tab2:
             st.markdown("## Real-time Keyword Decay Alerts")
+            st.markdown("""
+            *This panel exposes critical, high-exposure query drops. It isolates key search metrics where impressions remain highly stable or growing, yet actual click volume drops significantly—signaling a shift in search features, user search layout, or competitor targeting updates.*
+            """)
             decay_queries = df_q[(df_q['Clicks_Delta'] < 0) & (df_q['Impressions_Delta'] >= 0) & (df_q['Position_Delta'] <= 0.2)].sort_values(by='Clicks_Delta', ascending=True).head(15)
 
             if not decay_queries.empty:
                 for idx, r in decay_queries.reset_index().iterrows():
                     mapped_url, confident = find_best_url_match_precise(r, df_p)
-                    badge = '<span class="verified-tag">✓ Confident Match</span>' if confident else '<span class="warning-tag">⚠️ Low Token Match - Verify URL</span>'
+                    badge = get_badge_html(confident, STRICT_MODE)
                     st.markdown(f"""
                     *   🔴 **Keyword:** `{r['Queries']}`  
                         *   **Current Rank:** {round(r['Position'], 1)}  
@@ -410,6 +420,9 @@ if uploaded_file is not None:
         # === TAB 3: HIGH-VALUE CTR GAPS ===
         with tab3:
             st.markdown("## High-Value CTR Gaps (Page 1)")
+            st.markdown("""
+            *This tracking sheet measures positions on page one (positions 1-10) against performance models. Keywords yielding CTR scores under 70% of standard expectations are flagged, highlighting urgent optimization targets.*
+            """)
             ctr_gaps_table = []
             for _, row in df_q[(df_q['Position'] <= 10.0) & (df_q['Impressions'] >= MIN_IMPR_THRESHOLD)].iterrows():
                 pos = max(1, min(10, int(round(row['Position']))))
@@ -431,7 +444,7 @@ if uploaded_file is not None:
             if ctr_gaps_table:
                 sorted_gaps = sorted(ctr_gaps_table, key=lambda x: x['Click Loss'], reverse=True)[:15]
                 for idx, item in enumerate(sorted_gaps):
-                    badge = '<span class="verified-tag">✓ Confident Match</span>' if item['Confident'] else '<span class="warning-tag">⚠️ Verification Recommended via GSC</span>'
+                    badge = get_badge_html(item['Confident'], STRICT_MODE, fallback_text="⚠️ Verification Recommended via GSC")
                     st.markdown(f"""
                     *   🎯 **Keyword:** `{item['Keyword']}` (Rank: **{item['Rank']}**)  
                         *   **Your CTR:** {item['Actual CTR']} *(Expected Benchmark: {item['Target CTR']})*  
@@ -448,6 +461,9 @@ if uploaded_file is not None:
         # === TAB 4: CANNIBALIZATION ===
         with tab4:
             st.markdown("## Search Intent & Cannibalization Clashes")
+            st.markdown("""
+            *This reporting space visualizes cannibalization where several internal landing pages conflict within the same general performance window. This conflict splits rankings, preventing a single page from advancing higher.*
+            """)
             cannibal_list = []
             candidates = df_q[df_q['Impressions'] >= MIN_IMPR_THRESHOLD].sort_values(by='Impressions', ascending=False).head(200)
             
@@ -491,12 +507,15 @@ if uploaded_file is not None:
         # === TAB 5: STRIKING DISTANCE QUICK WINS ===
         with tab5:
             st.markdown("## Striking Distance Quick Wins (Positions 11–15)")
+            st.markdown("""
+            *This panel highlights high-opportunity keywords holding stable organic baseline patterns just outside page one (positions 11-15). Minor adjustments to content relevance and internal links can lift these terms onto page one to unlock higher click distributions.*
+            """)
             striking_kws = df_q[(df_q['Position'] >= 11.0) & (df_q['Position'] <= 15.0)].sort_values(by='Impressions', ascending=False).head(20)
 
             if not striking_kws.empty:
                 for idx, r in striking_kws.reset_index().iterrows():
                     mapped_url, confident = find_best_url_match_precise(r, df_p)
-                    badge = '<span class="verified-tag">✓ Confident Match</span>' if confident else '<span class="warning-tag">⚠️ Verify Target Asset</span>'
+                    badge = get_badge_html(confident, STRICT_MODE, fallback_text="⚠️ Verify Target Asset")
                     st.markdown(f"""
                     *   🚀 **Keyword:** `{r['Queries']}`  
                         *   **Current Rank:** {round(r['Position'], 1)} | **Impressions:** {int(r['Impressions'])}  
@@ -506,6 +525,9 @@ if uploaded_file is not None:
         # === TAB 6: EXECUTION BLUEPRINT ===
         with tab6:
             st.markdown("## Priority Implementation Blueprint")
+            st.markdown("""
+            *This strategic guide compiles findings into a prioritized action roadmap. High-volume opportunities with confident alignments are given priority to ensure maximum visibility gains.*
+            """)
             st.markdown("Proceed with standard internal linking optimization protocols on high-confidence matched elements.")
     else:
         st.error("❌ Data formatting processing configuration mismatch.")
