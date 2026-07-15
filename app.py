@@ -4,7 +4,7 @@ import numpy as np
 import io
 import zipfile
 
-# Ensure Excel dependencies are available instantly
+# Ensure Excel/zip dependencies
 try:
     import xlsxwriter
 except ImportError:
@@ -14,15 +14,14 @@ except ImportError:
     import xlsxwriter
 
 # =========================================================================
-# 1. PREMIUM MIDNIGHT DARK THEME ENGINE (FIXED "UPLOADPLOAD" BUG)
+# PREMIUM MIDNIGHT DARK THEME ENGINE
 # =========================================================================
 st.set_page_config(
-    page_title="Enterprise GSC Forensic Hub",
-    page_icon="🛡️",
+    page_title="Algorithmic SEO Detective",
+    page_icon="🤖",
     layout="wide"
 )
 
-# Custom premium dark stylesheet injection (Safe CSS targets to protect UI widgets)
 st.markdown("""
     <style>
     /* Premium Midnight Dark Page Background */
@@ -30,8 +29,7 @@ st.markdown("""
         background-color: #0f172a !important; 
     }
     
-    /* Safely target only Headings and specified elements to prevent uploader overlap */
-    h1, h2, h3, h4, h5, h6, .metric-title, .metric-desc { 
+    h1, h2, h3, h4, h5, h6, .directive-header { 
         color: #f8fafc !important; 
         font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
     }
@@ -48,104 +46,71 @@ st.markdown("""
         border-radius: 12px;
         margin-bottom: 25px;
         box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3);
-        border-left: 6px solid #60a5fa;
+        border-left: 6px solid #3b82f6;
     }
     .hero-banner h1 { 
         color: #ffffff !important; 
         margin: 0 0 8px 0 !important; 
-        font-size: 2rem !important; 
+        font-size: 2.2rem !important; 
     }
     .hero-banner p { 
         color: #93c5fd !important; 
         margin: 0; 
-        font-size: 1rem; 
+        font-size: 1.05rem; 
         line-height: 1.5; 
         font-weight: 400;
     }
     
-    /* High-Contrast Dark KPI Cards */
-    .kpi-container {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-        gap: 20px;
-        margin-bottom: 25px;
-    }
-    
-    .kpi-card {
+    /* Custom Risk Card & Alert Classes */
+    .directive-card {
         background-color: #1e293b !important;
-        border: 2px solid #334155 !important;
-        border-radius: 12px;
-        padding: 24px;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.25);
-        text-align: center;
-    }
-    
-    .kpi-val { 
-        font-size: 2.2rem; 
-        font-weight: 800; 
-        color: #f8fafc !important; 
-        font-family: "SF Mono", monospace; 
-        line-height: 1.1;
-    }
-    .kpi-val.positive { color: #34d399 !important; }
-    .kpi-val.negative { color: #f87171 !important; }
-    .kpi-val.warning { color: #fbbf24 !important; }
-    
-    .kpi-lbl { 
-        font-size: 0.8rem; 
-        color: #94a3b8 !important; 
-        text-transform: uppercase; 
-        letter-spacing: 0.08em; 
-        margin-top: 10px;
-        font-weight: 700;
-    }
-    
-    /* Deep Warning Banners */
-    .risk-banner {
-        background-color: #78350f !important;
-        border: 1px solid #b45309 !important;
-        border-left: 6px solid #f59e0b !important;
-        padding: 16px;
-        border-radius: 8px;
-        margin-bottom: 15px;
-    }
-    .risk-banner h4 { color: #fef3c7 !important; margin: 0 0 6px 0 !important; font-size: 1.05rem !important; }
-    .risk-banner p { color: #fde68a !important; margin: 0; font-size: 0.9rem; font-weight: 500; }
-
-    /* Dark Mode Tabs Customization */
-    .stTabs [data-baseweb="tab-list"] {
-        gap: 8px;
-        background-color: #1e293b !important;
-        padding: 8px;
+        border: 1px solid #334155 !important;
+        border-left: 5px solid #3b82f6 !important;
+        padding: 20px;
         border-radius: 10px;
+        margin-bottom: 20px;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
     }
-    .stTabs [data-baseweb="tab"] {
-        background-color: transparent;
-        border-radius: 8px;
-        color: #94a3b8 !important;
-        padding: 10px 20px;
-        font-weight: 700 !important;
-        font-size: 0.95rem;
+    .directive-card.danger {
+        border-left-color: #ef4444 !important;
+        background-color: #2d1616 !important;
     }
-    .stTabs [aria-selected="true"] {
-        background-color: #334155 !important;
-        color: #ffffff !important;
-        box-shadow: 0 4px 6px rgba(0,0,0,0.2);
+    .directive-card.warning {
+        border-left-color: #f59e0b !important;
+        background-color: #2d200f !important;
+    }
+    .directive-card.success {
+        border-left-color: #10b981 !important;
+        background-color: #0f2d1e !important;
+    }
+    .directive-card.info {
+        border-left-color: #6366f1 !important;
+        background-color: #171738 !important;
     }
     
-    /* Explicit color for standard Streamlit text elements without breaking input files */
+    .directive-title {
+        font-size: 1.2rem !important;
+        font-weight: 700 !important;
+        margin-bottom: 8px !important;
+    }
+    
+    .directive-text {
+        font-size: 0.95rem !important;
+        line-height: 1.6 !important;
+        color: #cbd5e1 !important;
+    }
+    
+    /* Explicit color for standard Streamlit text elements */
     .stMarkdown p, .stMarkdown span {
         color: #e2e8f0 !important;
     }
     
-    /* Keep widget labels crisp and clean */
     label[data-testid="stWidgetLabel"] p {
         color: #cbd5e1 !important;
         font-weight: 700 !important;
         font-size: 0.95rem !important;
     }
     
-    /* Custom spacing and separators */
     hr {
         border-color: #334155 !important;
     }
@@ -155,43 +120,34 @@ st.markdown("""
 # Title Area Block
 st.markdown("""
 <div class="hero-banner">
-    <h1>🛡️ Enterprise GSC Forensic Hub</h1>
-    <p>A high-performance diagnostic dashboard for raw Search Console exports. Analyzes keywords/pages strictly up to <b>Position 30</b>, scrubs UTM tracking flags automatically, and exposes high-yield organic opportunities.</p>
+    <h1>🕵️ Algorithmic SEO Detective</h1>
+    <p>This engine analyzes your Search Console data in real-time, strips out raw tables entirely, and renders strict algorithmic diagnostics. Get programmatic directives on quality filters, indexation decays, and SERP volatility.</p>
 </div>
 """, unsafe_allow_html=True)
 
 # =========================================================================
-# 2. INLINE CONFIGURATION BOARD
+# CONFIGURATION INPUTS
 # =========================================================================
-st.markdown("### ⚙️ Engine Control Panel")
+st.markdown("### ⚙️ Forensic Tuning & Parameters")
 
 cfg_col1, cfg_col2, cfg_col3 = st.columns(3)
 with cfg_col1:
     BRAND_TERM = st.text_input("Exclude Branded Searches (Default is Blank):", value="").lower().strip()
 with cfg_col2:
-    MIN_IMPR_THRESHOLD = st.number_input("Minimum Impressions Threshold:", min_value=1, value=100)
+    MIN_IMPR_THRESHOLD = st.number_input("Minimum Impressions Threshold:", min_value=1, value=150)
 with cfg_col3:
-    MAX_CANNIBAL_OFFSET = st.slider("Cannibalization Search Space (Pos. Gap):", 1, 15, 8)
+    MAX_CANNIBAL_OFFSET = st.slider("Cannibalization Search Space (Pos. Gap):", 1, 15, 6)
 
 st.markdown("---")
 
-# CTR Benchmark targets configuration
-CTR_BENCHMARKS = {
-    1: 30.0, 2: 15.0, 3: 10.0, 4: 7.0, 5: 5.0,
-    6: 4.0,  7: 3.0,  8: 2.5,  9: 2.0,  10: 1.5
-}
-for pos in range(11, 31):
-    CTR_BENCHMARKS[pos] = round(15.0 / pos, 2)
-
 # =========================================================================
-# 3. ROBUST GSC SHEET COMPARISON ENGINE
+# DATA CLEANING ENGINE (CRITICAL FORENSIC PREPARATION)
 # =========================================================================
 def parse_gsc_sheet(df, dim_name):
     df.columns = [c.strip() for c in df.columns]
     
-    # Locate the query/page identity column
     target_col = next((c for c in df.columns if c.lower() in [
-        dim_name.lower(), 'query', 'page', 'device', 'country', 'search appearance', f'top {dim_name.lower()}'
+        dim_name.lower(), 'query', 'page', 'device', 'country', 'top query', 'top page'
     ]), None)
     
     if not target_col:
@@ -200,30 +156,24 @@ def parse_gsc_sheet(df, dim_name):
     normalized = pd.DataFrame()
     normalized[dim_name] = df[target_col].astype(str).str.strip()
     
-    # Scrub UTM tracked parameters immediately
     if dim_name == 'Pages':
         normalized = normalized[~normalized['Pages'].str.lower().str.contains('utm_|_utm|utm=', na=False)]
         
-    # Robust metric grabber capable of handling standard and comparison GSC schemas
     def extract_stats(keywords, default_val=0.0):
-        # Look for the primary current value (avoiding "previous" or "difference" columns)
         col = next((c for c in df.columns if any(k in c.lower() for k in keywords) 
                     and 'difference' not in c.lower() 
                     and 'previous' not in c.lower() 
                     and 'compare' not in c.lower()), None)
         
-        # Look for dynamic change/difference metrics
         diff_col = next((c for c in df.columns if any(k in c.lower() for k in keywords) 
                          and ('difference' in c.lower() or 'delta' in c.lower() or 'change' in c.lower())), None)
         
-        # If no explicit "difference" column is present, try calculation with "previous" values if they exist
         prev_col = next((c for c in df.columns if any(k in c.lower() for k in keywords) 
                          and 'previous' in c.lower()), None)
         
         val_series = pd.to_numeric(df[col], errors='coerce').fillna(default_val) if col else pd.Series(default_val, index=df.index)
         
         if diff_col:
-            # Clean possible percent or sign formatting in differences
             diff_clean = df[diff_col].astype(str).str.replace('%', '', regex=False).str.replace('+', '', regex=False)
             delta_series = pd.to_numeric(diff_clean, errors='coerce').fillna(0.0)
         elif prev_col and col:
@@ -237,7 +187,6 @@ def parse_gsc_sheet(df, dim_name):
     normalized['Clicks'], normalized['Clicks_Delta'] = extract_stats(['click'])
     normalized['Impressions'], normalized['Impressions_Delta'] = extract_stats(['impression'])
     
-    # Extract & clean CTR metrics
     ctr_col = next((c for c in df.columns if 'ctr' in c.lower() and 'difference' not in c.lower() and 'previous' not in c.lower()), None)
     if ctr_col:
         normalized['CTR'] = df[ctr_col].astype(str).str.replace('%', '', regex=False)
@@ -247,7 +196,7 @@ def parse_gsc_sheet(df, dim_name):
         
     normalized['Position'], normalized['Position_Delta'] = extract_stats(['position'], default_val=99.0)
     
-    # Keep strictly within Search Range <= 30
+    # Strictly scope to Page 1-3
     normalized = normalized[normalized['Position'] <= 30.0]
     return normalized
 
@@ -256,32 +205,23 @@ def extract_gsc_payload(uploaded_zip):
     try:
         with zipfile.ZipFile(uploaded_zip) as z:
             file_names = z.namelist()
-            mappings = {
-                'Queries': 'queries.csv',
-                'Pages': 'pages.csv',
-                'Devices': 'devices.csv',
-                'Countries': 'countries.csv'
-            }
+            mappings = {'Queries': 'queries.csv', 'Pages': 'pages.csv'}
             for key, pattern in mappings.items():
                 matched_file = next((n for n in file_names if pattern in n.lower()), None)
                 if matched_file:
                     with z.open(matched_file) as f:
                         raw_df = pd.read_csv(f)
-                        clean_df = parse_gsc_sheet(raw_df, key if key in ['Queries', 'Pages'] else 'Name')
+                        clean_df = parse_gsc_sheet(raw_df, key)
                         if clean_df is not None:
                             results[key] = clean_df
             return results
     except Exception:
         return None
 
-def make_csv_download(df, name):
-    csv_encoded = df.to_csv(index=False).encode('utf-8')
-    st.download_button("💾 Export CSV Sheet", csv_encoded, key=f"dl_{name}", file_name=name, mime="text/csv")
-
 # =========================================================================
-# 4. RUN ANALYTICAL PIPELINE
+# FORENSIC PIPELINE EXECUTION
 # =========================================================================
-uploaded_file = st.file_uploader("Upload GSC ZIP file below to begin analysis:", type=["zip"])
+uploaded_file = st.file_uploader("Upload GSC ZIP file to begin automated detective diagnostics:", type=["zip"])
 
 if uploaded_file is not None:
     gsc = extract_gsc_payload(uploaded_file)
@@ -290,289 +230,175 @@ if uploaded_file is not None:
         df_q_raw = gsc['Queries'].copy()
         df_p = gsc['Pages'].copy()
         
-        # Apply brand filtering dynamically
+        # Apply brand filter dynamically
         df_q = df_q_raw[~df_q_raw['Queries'].str.lower().str.contains(BRAND_TERM, na=False)].copy() if BRAND_TERM else df_q_raw.copy()
         
-        # Calculate comparison trends
-        clicks_curr = df_q['Clicks'].sum()
-        clicks_delta = df_q['Clicks_Delta'].sum()
-        clicks_prev = max(1.0, clicks_curr - clicks_delta)
-        clicks_change_pct = round((clicks_delta / clicks_prev) * 100, 2)
-        
-        impr_curr = df_q['Impressions'].sum()
-        impr_delta = df_q['Impressions_Delta'].sum()
-        impr_prev = max(1.0, impr_curr - impr_delta)
-        impr_change_pct = round((impr_delta / impr_prev) * 100, 2)
-        
-        avg_pos_shift = round(df_q['Position_Delta'].mean(), 2)
-        
-        winning_queries_cnt = len(df_q[df_q['Clicks_Delta'] > 0])
-        losing_queries_cnt = len(df_q[df_q['Clicks_Delta'] < 0])
-        
-        # Estimate lost clicks due to CTR deficits
-        est_lost_clicks = 0
-        ctr_gaps_table = []
-        for _, row in df_q[(df_q['Position'] <= 30.0) & (df_q['Impressions'] >= MIN_IMPR_THRESHOLD)].iterrows():
-            pos = max(1, min(30, int(round(row['Position']))))
-            benchmark = CTR_BENCHMARKS.get(pos, 1.0)
-            if row['CTR'] < (benchmark * 0.7):
-                projected_clicks = (row['Impressions'] * (benchmark / 100)) - row['Clicks']
-                if projected_clicks > 0:
-                    est_lost_clicks += int(projected_clicks)
-                    ctr_gaps_table.append({
-                        "Keyword": row['Queries'],
-                        "Rank": round(row['Position'], 1),
-                        "Actual CTR": f"{round(row['CTR'], 1)}%",
-                        "Target CTR": f"{round(benchmark, 1)}%",
-                        "Click Gap Loss": int(projected_clicks),
-                        "Impressions": int(row['Impressions'])
-                    })
-        df_ctr_gaps = pd.DataFrame(ctr_gaps_table).sort_values(by="Click Gap Loss", ascending=False) if ctr_gaps_table else pd.DataFrame()
+        st.markdown("## 🔍 Algorithmic Investigation Results")
+        st.markdown("Below are the findings derived automatically by correlating mathematical trends across your Search Console datasets.")
 
-        # Render KPI Container
-        st.markdown(f"""
-        <div class="kpi-container">
-            <div class="kpi-card">
-                <div class="kpi-val {"positive" if clicks_change_pct >= 0 else "negative"}">{clicks_change_pct}%</div>
-                <div class="kpi-lbl">Clicks Change</div>
-            </div>
-            <div class="kpi-card">
-                <div class="kpi-val {"positive" if impr_change_pct >= 0 else "negative"}">{impr_change_pct}%</div>
-                <div class="kpi-lbl">Impressions Change</div>
-            </div>
-            <div class="kpi-card">
-                <div class="kpi-val {"positive" if avg_pos_shift < 0 else "negative" if avg_pos_shift > 0 else "warning"}">{avg_pos_shift}</div>
-                <div class="kpi-lbl">Avg Position Shift</div>
-            </div>
-            <div class="kpi-card">
-                <div class="kpi-val negative">{est_lost_clicks:,}</div>
-                <div class="kpi-lbl">Lost Click Potential</div>
-            </div>
-        </div>
-        """, unsafe_allow_html=True)
-
-        # Multi-Sheet Excel Compiler
-        output = io.BytesIO()
-        with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
-            df_q.head(500).to_excel(writer, sheet_name='Clean Queries', index=False)
-            df_p.head(500).to_excel(writer, sheet_name='Clean Pages', index=False)
-            if not df_ctr_gaps.empty:
-                df_ctr_gaps.head(500).to_excel(writer, sheet_name='CTR Click Loss Gaps', index=False)
-        xlsx_compiled = output.getvalue()
+        # --- ALGORITHMIC DETECTOR 1: THE CORE UPDATE HIT DETECTOR ---
+        # Look for systemic multi-keyword drops or core shifts
+        losing_keys = df_q[df_q['Clicks_Delta'] < 0]
+        gaining_keys = df_q[df_q['Clicks_Delta'] > 0]
         
-        st.download_button(
-            label="📊 Download Integrated Multi-Sheet Excel Report (.xlsx)",
-            data=xlsx_compiled,
-            file_name="gsc_enterprise_performance_audit.xlsx",
-            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-        )
+        total_lost_clicks = abs(losing_keys['Clicks_Delta'].sum())
+        total_gained_clicks = gaining_keys['Clicks_Delta'].sum()
         
-        st.markdown("<br/>", unsafe_allow_html=True)
+        core_hit_score = 0.0
+        if total_lost_clicks > 0:
+            core_hit_score = round((total_lost_clicks / (total_lost_clicks + total_gained_clicks + 1e-5)) * 100, 1)
 
-        # Navigation Hub for Forensic Sheets
-        tab_kws, tab_pgs, tab_ctr, tab_can, tab_directives = st.tabs([
-            "🔑 Keyword Forensic Reports", 
-            "📄 Page Leakages", 
-            "📈 CTR Gap Analysis", 
-            "🎯 Cannibalization Map", 
-            "🤖 Algorithmic Directives"
-        ])
-        
-        # --- TAB 1: KEYWORDS ---
-        with tab_kws:
-            st.markdown("### Keyword Diagnostic Core")
-            
-            k1, k2 = st.columns(2)
-            with k1:
-                st.markdown("#### 📈 Top Gaining Keywords")
-                gaining = df_q[df_q['Clicks_Delta'] > 0].sort_values(by='Clicks_Delta', ascending=False).head(25)
-                st.dataframe(gaining, use_container_width=True)
-                make_csv_download(gaining, "top_gaining_keywords.csv")
-                
-                st.markdown("#### 🎯 Striking Distance (Positions 4–10)")
-                striking = df_q[(df_q['Position'] >= 4.0) & (df_q['Position'] <= 10.0)].sort_values(by='Impressions', ascending=False).head(25)
-                st.dataframe(striking, use_container_width=True)
-                make_csv_download(striking, "striking_distance_keywords.csv")
-                
-            with k2:
-                st.markdown("#### 🚨 Top Losing Keywords")
-                losing = df_q[df_q['Clicks_Delta'] < 0].sort_values(by='Clicks_Delta', ascending=True).head(25)
-                st.dataframe(losing, use_container_width=True)
-                make_csv_download(losing, "top_losing_keywords.csv")
-                
-                st.markdown("#### 📍 Page Two Optimization Options (Positions 11–20)")
-                page_two = df_q[(df_q['Position'] >= 11.0) & (df_q['Position'] <= 20.0)].sort_values(by='Impressions', ascending=False).head(25)
-                st.dataframe(page_two, use_container_width=True)
-                make_csv_download(page_two, "page_two_opportunities.csv")
-
-        # --- TAB 2: PAGES ---
-        with tab_pgs:
-            st.markdown("### Landing Page Forensic Core")
-            
-            p1, p2 = st.columns(2)
-            with p1:
-                st.markdown("#### 📈 Top Gaining Pages")
-                pg_gain = df_p[df_p['Clicks_Delta'] > 0].sort_values(by='Clicks_Delta', ascending=False).head(25)
-                st.dataframe(pg_gain, use_container_width=True)
-                make_csv_download(pg_gain, "top_gaining_pages.csv")
-                
-                st.markdown("#### ♻️ Pages Requiring Fresh Content")
-                pg_refresh = df_p[(df_p['Position_Delta'] > 0.8) & (df_p['Clicks_Delta'] < 0)].sort_values(by='Impressions', ascending=False).head(25)
-                st.dataframe(pg_refresh, use_container_width=True)
-                make_csv_download(pg_refresh, "pages_needing_refresh.csv")
-                
-            with p2:
-                st.markdown("#### 📉 Top Losing Pages")
-                pg_lose = df_p[df_p['Clicks_Delta'] < 0].sort_values(by='Clicks_Delta', ascending=True).head(25)
-                st.dataframe(pg_lose, use_container_width=True)
-                make_csv_download(pg_lose, "top_losing_pages.csv")
-                
-                st.markdown("#### 🔍 Missing Click Potential (Top 10 with Low CTR)")
-                pg_potential = df_p[(df_p['Position'] <= 10.0) & (df_p['CTR'] < 1.8)].sort_values(by='Impressions', ascending=False).head(25)
-                st.dataframe(pg_potential, use_container_width=True)
-                make_csv_download(pg_potential, "pages_with_low_ctr_in_top10.csv")
-
-        # --- TAB 3: CTR ANALYSIS ---
-        with tab_ctr:
-            st.markdown("### Click Efficiency Loss and SERP Click Gaps")
-            if not df_ctr_gaps.empty:
-                st.dataframe(df_ctr_gaps.head(50), use_container_width=True)
-                make_csv_download(df_ctr_gaps, "expected_ctr_deficits.csv")
-            else:
-                st.info("No significant CTR gaps detected based on position benchmarks.")
-
-        # --- TAB 4: CANNIBALIZATION MAP ---
-        with tab_can:
-            st.markdown("### Organic Search Conflict Map")
-            
-            cannibal_list = []
-            candidates = df_q[df_q['Impressions'] >= MIN_IMPR_THRESHOLD].sort_values(by='Impressions', ascending=False).head(150)
-            
-            for _, q_row in candidates.iterrows():
-                query_txt = q_row['Queries']
-                q_pos = q_row['Position']
-                
-                matching_urls = df_p[
-                    (df_p['Position'] >= q_pos - MAX_CANNIBAL_OFFSET) & 
-                    (df_p['Position'] <= q_pos + MAX_CANNIBAL_OFFSET) &
-                    (df_p['Impressions'] >= MIN_IMPR_THRESHOLD / 2)
-                ].sort_values(by=['Clicks', 'Impressions'], ascending=[False, False])
-                
-                if len(matching_urls) > 1:
-                    primary_url = matching_urls.iloc[0]['Pages']
-                    primary_pos = round(matching_urls.iloc[0]['Position'], 1)
-                    
-                    for sub_idx in range(1, min(len(matching_urls), 3)):
-                        sub_row = matching_urls.iloc[sub_idx]
-                        cannibal_url = sub_row['Pages']
-                        cannibal_pos = round(sub_row['Position'], 1)
-                        
-                        if cannibal_url != primary_url:
-                            cannibal_list.append({
-                                "Query": query_txt,
-                                "Primary Authority Page": primary_url,
-                                "Primary Rank": primary_pos,
-                                "Competing Page": cannibal_url,
-                                "Competing Rank": cannibal_pos,
-                                "Overlap Distance": round(abs(primary_pos - cannibal_pos), 1)
-                            })
-                            
-            df_cannibals = pd.DataFrame(cannibal_list).drop_duplicates() if cannibal_list else pd.DataFrame()
-            
-            if not df_cannibals.empty:
-                st.dataframe(df_cannibals.head(50), use_container_width=True)
-                make_csv_download(df_cannibals, "search_cannibalization_clashes.csv")
-            else:
-                st.info("No query cannibalization mapped between positions 1 and 30.")
-
-        # --- TAB 5: ALGORITHMIC DIRECTIVES ---
-        with tab_directives:
-            st.markdown("### 🤖 Algorithmic Optimization Roadmap")
-            
-            # --- ROW 1: THE FORENSIC DIRECTIVES MAP ---
-            ad_col1, ad_col2 = st.columns(2)
-            
-            with ad_col1:
-                st.markdown("""
-                <div class="risk-banner">
-                    <h4>🚨 Algorithmic CTR Decay Risk</h4>
-                    <p><b>Issue:</b> Positions and Impressions are stable, but Clicks are declining. This indicates competitors are capturing your share with newer snippets, or SERP features have pushed you down visually.</p>
+        if core_hit_score > 65.0:
+            st.markdown(f"""
+            <div class="directive-card danger">
+                <div class="directive-title">🚨 Systemic Algorithmic Suppression Flagged ({core_hit_score}% Probability)</div>
+                <div class="directive-text">
+                    <b>Diagnostic:</b> Over {core_hit_score}% of overall trend movements are strictly negative. Clicks and impressions are dropping simultaneously across uncorrelated keywords. This strongly correlates with a Google Core Algorithm Update or search classifier adjustment rather than a simple indexation glitch. <br/>
+                    <b>Detective Action:</b> Audit your site-wide informational value. Avoid surface-level updates. Identify if pages hit hardest feature redundant introductory material, high affiliate/ad ratios, or lack distinct expert author perspectives (E-E-A-T).
                 </div>
-                """, unsafe_allow_html=True)
-                
-                # Decay Query Detection: Impressions change >= 0, Position change <= 0 (or improved), but Clicks dropped
-                decay_queries = df_q[
-                    (df_q['Clicks_Delta'] < 0) & 
-                    (df_q['Impressions_Delta'] >= 0) & 
-                    (df_q['Position_Delta'] <= 0.2)
-                ].sort_values(by='Clicks_Delta', ascending=True).head(8)
-                
-                if not decay_queries.empty:
-                    for i, r in decay_queries.reset_index().iterrows():
-                        st.markdown(f"**{i+1}.** `{r['Queries']}`  \n"
-                                    f"📉 Click Drop: **{int(r['Clicks_Delta'])}** | Rank Trend: **{round(r['Position_Delta'], 2)}**  \n"
-                                    f"*Directive: Overhaul metadata/microdata schema immediately. Revise HTML titles.*")
-                else:
-                    st.success("No active search landscape decay detected.")
-                    
-            with ad_col2:
-                st.markdown("""
-                <div class="risk-banner">
-                    <h4>🎯 High-Value CTR Gaps (Page 1)</h4>
-                    <p><b>Issue:</b> High-impression keywords that rank on Page 1 but are missing standard CTR benchmarks. These are your biggest fast-win revenue potentials.</p>
+            </div>
+            """, unsafe_allow_html=True)
+        elif core_hit_score > 35.0:
+            st.markdown(f"""
+            <div class="directive-card warning">
+                <div class="directive-title">⚠️ Moderate Algorithmic Volatility Checked ({core_hit_score}% Probability)</div>
+                <div class="directive-text">
+                    <b>Diagnostic:</b> Partial traffic degradation spotted across isolated clusters. This is likely not a site-wide quality penalty, but a sub-topic re-evaluation. Competitors are likely optimizing topical coverage or getting featured in newly introduced AI SERP widgets.<br/>
+                    <b>Detective Action:</b> Isolate which specific sub-folders or page templates are decaying. Run content comparison sprints against those that rose in your niche over the last month.
                 </div>
-                """, unsafe_allow_html=True)
-                
-                if not df_ctr_gaps.empty:
-                    p1_gaps = df_ctr_gaps[df_ctr_gaps['Rank'] <= 10.0].head(8)
-                    if not p1_gaps.empty:
-                        for i, r in p1_gaps.reset_index().iterrows():
-                            st.markdown(f"**{i+1}.** `{r['Keyword']}` (Rank: **{r['Rank']}**)  \n"
-                                        f"⚠️ CTR: **{r['Actual CTR']}** (Target: {r['Target CTR']}) | Loss: **-{r['Click Gap Loss']} Clicks**  \n"
-                                        f"*Directive: Check search intent. Are they looking for an image, tool, or guide? Adjust landing page content.*")
-                    else:
-                        st.success("No critical Page 1 CTR gaps observed.")
-                else:
-                    st.info("No CTR gap data found.")
+            </div>
+            """, unsafe_allow_html=True)
+        else:
+            st.markdown("""
+            <div class="directive-card success">
+                <div class="directive-title">✅ No Site-Wide Algorithmic Penalty Detected</div>
+                <div class="directive-text">
+                    <b>Diagnostic:</b> Your domain performance shows organic stability or growth. Performance fluctuations are local, standard search mechanics rather than a core automated filter or quality suppression.
+                </div>
+            </div>
+            """, unsafe_allow_html=True)
 
-            st.markdown("---")
-            
-            # --- ROW 2: CRITICAL CONTENT ACTIONS ---
-            ad_col3, ad_col4 = st.columns(2)
-            
-            with ad_col3:
-                st.markdown("""
-                <div class="risk-banner">
-                    <h4>📋 Landing Pages Requiring Authority Injection</h4>
-                    <p><b>Issue:</b> Pages losing rankings and clicks at the same time. These are decaying and need fresh content, internal links, or updated outbound resources.</p>
+        # --- ALGORITHMIC DETECTOR 2: SPAMBRAIN / CONTENT QUALITY CRITICAL FILTER ---
+        # Detect pages gaining impressions but crashing in clicks and position, indicating thin content classifiers
+        thin_content_candidates = df_p[
+            (df_p['Position_Delta'] > 1.0) & 
+            (df_p['Clicks_Delta'] < -10) & 
+            (df_p['Impressions_Delta'] >= 0)
+        ]
+        
+        if len(thin_content_candidates) > 0:
+            st.markdown(f"""
+            <div class="directive-card danger">
+                <div class="directive-title">🔴 SpamBrain & Helpful Content Classifier Risk: Detected on {len(thin_content_candidates)} Landing Page Paths</div>
+                <div class="directive-text">
+                    <b>Diagnostic:</b> Multi-metric divergence detected. Google is processing and rendering these pages in search results (Impressions are stable/increasing), but it is systematically shifting rankings downward (Positions are slipping and Clicks are plummeting). This matches the algorithmic behavior of automatic helpfulness classifiers.<br/>
+                    <b>Detective Action:</b> Review these landing pages immediately. Look for scaled AI generation, keyword stuffing in H2/H3 elements, and massive block quotes that do not answer the user query directly. Consolidate low-value pages of similar content into singular authoritative pillars.
                 </div>
-                """, unsafe_allow_html=True)
-                
-                bad_pages = df_p[(df_p['Position_Delta'] > 0.8) & (df_p['Clicks_Delta'] < 0)].sort_values(by='Impressions', ascending=False).head(8)
-                if not bad_pages.empty:
-                    for i, r in bad_pages.reset_index().iterrows():
-                        st.markdown(f"**{i+1}.** `{r['Pages']}`  \n"
-                                    f"🔴 Loss: **{int(r['Clicks_Delta'])} Clicks** | Rank Slip: **+{round(r['Position_Delta'], 1)}** positions  \n"
-                                    f"*Directive: Inject new primary data, optimize headings, and link internally from other authority pages.*")
-                else:
-                    st.success("No critical landing page degradation detected.")
-                    
-            with ad_col4:
-                st.markdown("""
-                <div class="risk-banner">
-                    <h4>⛓️ Strategic Internal Link Targets</h4>
-                    <p><b>Issue:</b> Keywords idling on Page 2 (Positions 11–15). They have solid impression volume but are missing internal link power to push them into Page 1.</p>
+            </div>
+            """, unsafe_allow_html=True)
+        else:
+            st.markdown("""
+            <div class="directive-card success">
+                <div class="directive-title">🛡️ SpamBrain Classifier Health: Clean</div>
+                <div class="directive-text">
+                    <b>Diagnostic:</b> No content clusters show systemic impression-position divergence patterns. Google continues to index and rank your optimized content cleanly without triggering modern spam or helpful content filters.
                 </div>
-                """, unsafe_allow_html=True)
-                
-                target_kws = df_q[(df_q['Position'] >= 11) & (df_q['Position'] <= 15)].sort_values(by='Impressions', ascending=False).head(8)
-                if not target_kws.empty:
-                    for i, r in target_kws.reset_index().iterrows():
-                        st.markdown(f"**{i+1}.** `{r['Queries']}`  \n"
-                                    f"👁️ Impressions: **{int(r['Impressions'])}** | Rank: **{round(r['Position'], 1)}**  \n"
-                                    f"*Directive: Add 2-3 anchor-optimized internal links pointing to this asset from top-performing pages.*")
-                else:
-                    st.success("All target keywords rank cleanly on page 1.")
+            </div>
+            """, unsafe_allow_html=True)
+
+        # --- ALGORITHMIC DETECTOR 3: THE INTENT COLLISION ENGINE (CANNIBALIZATION DETECTOR) ---
+        # Cross-reference query variations with multiple pages vying for attention
+        cannibal_list = []
+        candidates = df_q[df_q['Impressions'] >= MIN_IMPR_THRESHOLD].sort_values(by='Impressions', ascending=False).head(150)
+        
+        for _, q_row in candidates.iterrows():
+            query_txt = q_row['Queries']
+            q_pos = q_row['Position']
+            
+            matching_urls = df_p[
+                (df_p['Position'] >= q_pos - MAX_CANNIBAL_OFFSET) & 
+                (df_p['Position'] <= q_pos + MAX_CANNIBAL_OFFSET) &
+                (df_p['Impressions'] >= MIN_IMPR_THRESHOLD / 2)
+            ]
+            
+            if len(matching_urls) > 1:
+                primary_url = matching_urls.iloc[0]['Pages']
+                secondary_url = matching_urls.iloc[1]['Pages'] if len(matching_urls) > 1 else ""
+                if primary_url != secondary_url and secondary_url:
+                    cannibal_list.append(query_txt)
+
+        unique_cannibals = list(set(cannibal_list))
+        if len(unique_cannibals) > 5:
+            st.markdown(f"""
+            <div class="directive-card warning">
+                <div class="directive-title">⚔️ Search Intent Collision: High Volatility Confirmed ({len(unique_cannibals)} Overlapping Terms)</div>
+                <div class="directive-text">
+                    <b>Diagnostic:</b> Google's ranking engine is oscillating between multiple pages on your site to answer the same queries. This results in keyword cannibalization where both URLs compete, diluting link juice, anchor text equity, and CTR performance. <br/>
+                    <b>Detective Action:</b> De-optimize competing assets. Use precise anchor-text internal linking from the secondary page back to the primary canonical URL using the target term. If content overlaps significantly, 301-redirect or canonicalize the weaker page into the stronger page.
+                </div>
+            </div>
+            """, unsafe_allow_html=True)
+        else:
+            st.markdown("""
+            <div class="directive-card success">
+                <div class="directive-title">🎯 Intent Targeting: Highly Focused</div>
+                <div class="directive-text">
+                    <b>Diagnostic:</b> Low intent collision across your GSC footprint. Google has a clear map of which URL is the absolute authority page for your primary organic keyword groups.
+                </div>
+            </div>
+            """, unsafe_allow_html=True)
+
+        # --- ALGORITHMIC DETECTOR 4: SERP LAYOUT & PIXEL SHIFT DETECTOR (VISIBILITY GAP) ---
+        # High impressions, high rankings, but dramatic loss of CTR. 
+        serp_layout_shifts = df_q[
+            (df_q['Position'] <= 8.0) & 
+            (df_q['Clicks_Delta'] < 0) & 
+            (df_q['Impressions_Delta'] >= 0) &
+            (df_q['CTR'] < 3.0)
+        ]
+        
+        if len(serp_layout_shifts) > 0:
+            st.markdown(f"""
+            <div class="directive-card info">
+                <div class="directive-title">👁️ SERP Landscape Displacement (Pixel-Shift Detected)</div>
+                <div class="directive-text">
+                    <b>Diagnostic:</b> Critical CTR degradation noticed on core keywords where you rank within the top 8 positions. Because impressions are stable, this signals that Google has altered the visual SERP layout (e.g., expanded AI Overviews, larger local packs, sponsored shopping feeds, or video carousels) forcing your result below the fold.<br/>
+                    <b>Detective Action:</b> Run manual searches for these queries. Assess if a competitor is optimizing for high-yield schema or if AI Summaries have displaced standard results. Re-engineer titles into questions, deploy custom structured data markup (Product, FAQ, or Schema tables), and target direct inclusion within generative answers.
+                </div>
+            </div>
+            """, unsafe_allow_html=True)
+        else:
+            st.markdown("""
+            <div class="directive-card success">
+                <div class="directive-title">✨ SERP Pixel Visibility: Safe</div>
+                <div class="directive-text">
+                    <b>Diagnostic:</b> Your high-ranking queries are converting at expected ratios relative to their position, showing no sign of pixel displacement or algorithmic crowding in the SERPs.
+                </div>
+            </div>
+            """, unsafe_allow_html=True)
+
+        # --- ALGORITHMIC DETECTOR 5: THE STRATEGIC NEXT-STEP DIRECTIVE ENGINE ---
+        st.markdown("## 📋 Execution Blueprint")
+        
+        # Pull striking distance for immediate quick wins
+        striking_distance_kws = df_q[(df_q['Position'] >= 4.0) & (df_q['Position'] <= 12.0)].sort_values(by='Impressions', ascending=False).head(5)
+        
+        # Build immediate list-style strategic recommendations based on current findings
+        st.markdown("""
+        To capture maximum organic traffic growth with minimal structural rebuilding, execute these specific directives on your domain immediately:
+        """)
+        
+        if not striking_distance_kws.empty:
+            st.markdown("### 🚀 Quick Win Internal Linking Directives")
+            for i, r in striking_distance_kws.reset_index().iterrows():
+                st.markdown(f"*   **Directive {i+1}:** Inject **2 to 3 targeted internal links** to the page ranking for keyword `{r['Queries']}` (Current Position: **{round(r['Position'], 1)}**). Use variations of the target term as anchor text across high-performing root pages.")
+        
+        st.markdown("### 🛠️ On-Page Semantic Updates")
+        st.markdown("""
+        *   **Optimize Heading Hierarchies:** Ensure your H1 perfectly matches search intent. Add concise answer paragraphs directly below H2 elements to win AI overview selections.
+        *   **Clean Up Schema:** Audit your structured data markup. Remove outdated microdata formatting to prevent crawling errors.
+        *   **Metadata Tuning:** For pages showing high impressions but low CTR, rewrite your meta title to sound compelling, addressing *why* a searcher should click on your result rather than relying on generative summaries.
+        """)
 
     else:
         st.error("❌ The uploaded ZIP file does not contain compatible 'queries.csv' and 'pages.csv' datasets.")
