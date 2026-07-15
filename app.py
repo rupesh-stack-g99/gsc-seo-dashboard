@@ -487,36 +487,90 @@ if uploaded_file is not None:
 
         # --- TAB 5: ALGORITHMIC DIRECTIVES ---
         with tab_directives:
-            st.markdown("### Algorithmic Optimization Roadmap")
+            st.markdown("### 🤖 Algorithmic Optimization Roadmap")
             
-            d1, d2 = st.columns(2)
-            with d1:
+            # --- ROW 1: THE FORENSIC DIRECTIVES MAP ---
+            ad_col1, ad_col2 = st.columns(2)
+            
+            with ad_col1:
                 st.markdown("""
                 <div class="risk-banner">
-                    <h4>📋 Content Refresh Targets</h4>
-                    <p>Improve on-page intent optimization and information density for these URLs to capture rising keyword trends.</p>
+                    <h4>🚨 Algorithmic CTR Decay Risk</h4>
+                    <p><b>Issue:</b> Positions and Impressions are stable, but Clicks are declining. This indicates competitors are capturing your share with newer snippets, or SERP features have pushed you down visually.</p>
                 </div>
                 """, unsafe_allow_html=True)
                 
-                bad_pages = df_p[(df_p['Position_Delta'] > 0.8) & (df_p['Clicks_Delta'] < 0)].sort_values(by='Impressions', ascending=False).head(10)
+                # Decay Query Detection: Impressions change >= 0, Position change <= 0 (or improved), but Clicks dropped
+                decay_queries = df_q[
+                    (df_q['Clicks_Delta'] < 0) & 
+                    (df_q['Impressions_Delta'] >= 0) & 
+                    (df_q['Position_Delta'] <= 0.2)
+                ].sort_values(by='Clicks_Delta', ascending=True).head(8)
+                
+                if not decay_queries.empty:
+                    for i, r in decay_queries.reset_index().iterrows():
+                        st.markdown(f"**{i+1}.** `{r['Queries']}`  \n"
+                                    f"📉 Click Drop: **{int(r['Clicks_Delta'])}** | Rank Trend: **{round(r['Position_Delta'], 2)}**  \n"
+                                    f"*Directive: Overhaul metadata/microdata schema immediately. Revise HTML titles.*")
+                else:
+                    st.success("No active search landscape decay detected.")
+                    
+            with ad_col2:
+                st.markdown("""
+                <div class="risk-banner">
+                    <h4>🎯 High-Value CTR Gaps (Page 1)</h4>
+                    <p><b>Issue:</b> High-impression keywords that rank on Page 1 but are missing standard CTR benchmarks. These are your biggest fast-win revenue potentials.</p>
+                </div>
+                """, unsafe_allow_html=True)
+                
+                if not df_ctr_gaps.empty:
+                    p1_gaps = df_ctr_gaps[df_ctr_gaps['Rank'] <= 10.0].head(8)
+                    if not p1_gaps.empty:
+                        for i, r in p1_gaps.reset_index().iterrows():
+                            st.markdown(f"**{i+1}.** `{r['Keyword']}` (Rank: **{r['Rank']}**)  \n"
+                                        f"⚠️ CTR: **{r['Actual CTR']}** (Target: {r['Target CTR']}) | Loss: **-{r['Click Gap Loss']} Clicks**  \n"
+                                        f"*Directive: Check search intent. Are they looking for an image, tool, or guide? Adjust landing page content.*")
+                    else:
+                        st.success("No critical Page 1 CTR gaps observed.")
+                else:
+                    st.info("No CTR gap data found.")
+
+            st.markdown("---")
+            
+            # --- ROW 2: CRITICAL CONTENT ACTIONS ---
+            ad_col3, ad_col4 = st.columns(2)
+            
+            with ad_col3:
+                st.markdown("""
+                <div class="risk-banner">
+                    <h4>📋 Landing Pages Requiring Authority Injection</h4>
+                    <p><b>Issue:</b> Pages losing rankings and clicks at the same time. These are decaying and need fresh content, internal links, or updated outbound resources.</p>
+                </div>
+                """, unsafe_allow_html=True)
+                
+                bad_pages = df_p[(df_p['Position_Delta'] > 0.8) & (df_p['Clicks_Delta'] < 0)].sort_values(by='Impressions', ascending=False).head(8)
                 if not bad_pages.empty:
                     for i, r in bad_pages.reset_index().iterrows():
-                        st.markdown(f"**{i+1}.** `{r['Pages']}` (Rank: **{round(r['Position'],1)}** | Loss: **{r['Clicks_Delta']} clicks**)")
+                        st.markdown(f"**{i+1}.** `{r['Pages']}`  \n"
+                                    f"🔴 Loss: **{int(r['Clicks_Delta'])} Clicks** | Rank Slip: **+{round(r['Position_Delta'], 1)}** positions  \n"
+                                    f"*Directive: Inject new primary data, optimize headings, and link internally from other authority pages.*")
                 else:
-                    st.success("No critical page-level drops found.")
+                    st.success("No critical landing page degradation detected.")
                     
-            with d2:
+            with ad_col4:
                 st.markdown("""
                 <div class="risk-banner">
-                    <h4>🔗 Internal Link Targets</h4>
-                    <p>These terms rank on page 2. Send internally pointing links to these URLs to boost rankings up to Page 1.</p>
+                    <h4>⛓️ Strategic Internal Link Targets</h4>
+                    <p><b>Issue:</b> Keywords idling on Page 2 (Positions 11–15). They have solid impression volume but are missing internal link power to push them into Page 1.</p>
                 </div>
                 """, unsafe_allow_html=True)
                 
-                target_kws = df_q[(df_q['Position'] >= 11) & (df_q['Position'] <= 20)].sort_values(by='Impressions', ascending=False).head(10)
+                target_kws = df_q[(df_q['Position'] >= 11) & (df_q['Position'] <= 15)].sort_values(by='Impressions', ascending=False).head(8)
                 if not target_kws.empty:
                     for i, r in target_kws.reset_index().iterrows():
-                        st.markdown(f"**{i+1}.** `{r['Queries']}` (Current Position: **{round(r['Position'],1)}** | Impressions: **{int(r['Impressions'])}**)")
+                        st.markdown(f"**{i+1}.** `{r['Queries']}`  \n"
+                                    f"👁️ Impressions: **{int(r['Impressions'])}** | Rank: **{round(r['Position'], 1)}**  \n"
+                                    f"*Directive: Add 2-3 anchor-optimized internal links pointing to this asset from top-performing pages.*")
                 else:
                     st.success("All target keywords rank cleanly on page 1.")
 
