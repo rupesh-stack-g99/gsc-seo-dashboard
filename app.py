@@ -8,105 +8,91 @@ import zipfile
 # PAGE CONFIGURATION & LAYOUT
 # =========================================================================
 st.set_page_config(
-    page_title="Executive SEO Strategy Hub",
-    page_icon="🎯",
+    page_title="SEO Damage Control & Fix Engine",
+    page_icon="🚨",
     layout="wide"
 )
 
-# Premium SaaS UI Styling
+# Dark, ultra-clean "Fix-First" Dashboard UI styling
 st.markdown("""
     <style>
-    /* Main App Background & Typography */
     .stApp {
-        background-color: #fcfcfd;
+        background-color: #fafafa;
     }
     h1, h2, h3 {
-        color: #1e293b !important;
-        font-family: 'Inter', -apple-system, sans-serif;
+        color: #0f172a !important;
+        font-family: 'Inter', sans-serif;
     }
-    
-    /* Elegant Modern Executive Header */
-    .executive-banner {
-        background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
-        color: #f8fafc;
+    .fix-banner {
+        background: linear-gradient(135deg, #7f1d1d 0%, #450a0a 100%);
+        color: #fef2f2;
         padding: 30px;
-        border-radius: 16px;
+        border-radius: 12px;
         margin-bottom: 30px;
-        box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+        box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1);
     }
-    .executive-banner h2 {
+    .fix-banner h2 {
         color: #ffffff !important;
         margin-top: 0;
-        font-weight: 700;
-        letter-spacing: -0.025em;
     }
-    .executive-banner p {
-        color: #94a3b8;
-        font-size: 1.1rem;
+    .fix-banner p {
+        color: #fca5a5;
         margin-bottom: 0;
+        font-size: 1.05rem;
     }
-
-    /* Beautiful SaaS Action Cards */
-    .seo-card {
+    .error-card {
         background: #ffffff;
+        border: 1px solid #fee2e2;
+        border-left: 5px solid #ef4444;
+        border-radius: 8px;
+        padding: 20px;
+        margin-bottom: 16px;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+    }
+    .warning-card {
+        background: #ffffff;
+        border: 1px solid #fef3c7;
+        border-left: 5px solid #f59e0b;
+        border-radius: 8px;
+        padding: 20px;
+        margin-bottom: 16px;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+    }
+    .code-box {
+        background-color: #f8fafc;
         border: 1px solid #e2e8f0;
-        border-radius: 12px;
-        padding: 24px;
-        margin-bottom: 20px;
-        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -2px rgba(0, 0, 0, 0.05);
-        transition: transform 0.2s ease, box-shadow 0.2s ease;
+        padding: 8px 12px;
+        border-radius: 6px;
+        font-family: 'Courier New', Courier, monospace;
+        font-size: 0.85rem;
+        color: #334155;
+        word-break: break-all;
+        margin: 6px 0 12px 0;
     }
-    .seo-card:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.05), 0 4px 6px -4px rgba(0, 0, 0, 0.05);
-    }
-    
-    /* Card Left Border Highlights */
-    .card-critical { border-left: 5px solid #ef4444; }
-    .card-warning { border-left: 5px solid #f59e0b; }
-    .card-success { border-left: 5px solid #10b981; }
-
-    /* Custom Badges */
-    .badge {
+    .fix-badge {
         font-size: 0.75rem;
         font-weight: 700;
         text-transform: uppercase;
-        padding: 4px 10px;
-        border-radius: 9999px;
+        padding: 3px 8px;
+        border-radius: 4px;
         display: inline-block;
-        margin-bottom: 12px;
-        letter-spacing: 0.05em;
+        margin-bottom: 8px;
     }
     .badge-red { background-color: #fee2e2; color: #991b1b; }
-    .badge-yellow { background-color: #fef3c7; color: #92400e; }
-    .badge-green { background-color: #d1fae5; color: #065f46; }
-    
-    /* URL Formatting block */
-    .url-block {
-        background-color: #f8fafc;
-        border: 1px solid #cbd5e1;
-        padding: 8px 12px;
-        border-radius: 6px;
-        font-family: monospace;
-        font-size: 0.85rem;
-        word-break: break-all;
-        margin-top: 4px;
-        margin-bottom: 12px;
-        color: #334155;
-    }
+    .badge-orange { background-color: #fef3c7; color: #92400e; }
     </style>
 """, unsafe_allow_html=True)
 
-st.title("🎯 SEO Expert Growth & Action Engine")
-st.write("Upload your GSC raw ZIP export. The engine automatically unzips, maps, and calculates your top organic optimizations.")
+st.title("🚨 SEO Damage Control & Leak Fixer")
+st.write("Upload your GSC ZIP package. The engine will skip the vanity metrics and pull only the leaks, drops, errors, and optimization deficits.")
 
 # =========================================================================
 # SIDEBAR CONTROLS
 # =========================================================================
-st.sidebar.header("⚙️ Strategy Tuning")
-BRAND_KEYWORD = st.sidebar.text_input("Brand Keyword to Exclude", value="botoxie").lower().strip()
-MIN_IMPRESSIONS = st.sidebar.number_input("Min Impressions", min_value=1, value=100)
-MAX_POSITION_GAP = st.sidebar.number_input("Max Keyword Proximity Range", min_value=1, max_value=20, value=10)
+st.sidebar.header("⚙️ Filter Rules")
+BRAND_KEYWORD = st.sidebar.text_input("Exclude Branded Searches", value="botoxie").lower().strip()
+MIN_IMPRESSIONS = st.sidebar.number_input("Minimum Impressions Threshold", min_value=1, value=100)
+MAX_CANNIBAL_GAP = st.sidebar.slider("Cannibalization Proximity (Positions)", 1, 20, 10)
 
 CTR_BENCHMARKS = {
     1: 30.0, 2: 15.0, 3: 10.0, 4: 7.0, 5: 5.0,
@@ -158,252 +144,233 @@ def unpack_and_analyze_zip(uploaded_file):
     try:
         with zipfile.ZipFile(uploaded_file) as z:
             file_list = z.namelist()
-            
             file_targets = {
                 'Queries': next((f for f in file_list if "queries.csv" in f.lower()), None),
                 'Pages': next((f for f in file_list if "pages.csv" in f.lower()), None),
-                'Devices': next((f for f in file_list if "devices.csv" in f.lower()), None),
-                'Countries': next((f for f in file_list if "countries.csv" in f.lower()), None),
-                'SearchAppearance': next((f for f in file_list if "search_appearance.csv" in f.lower() or "searchappearance" in f.lower()), None)
+                'Devices': next((f for f in file_list if "devices.csv" in f.lower()), None)
             }
-            
             for key, filename in file_targets.items():
                 if filename:
                     with z.open(filename) as f:
                         df = pd.read_csv(f)
-                        normalized = normalize_gsc_df(df, key if key != 'SearchAppearance' else 'SearchAppearance')
+                        normalized = normalize_gsc_df(df, key)
                         if normalized is not None:
                             extracted_dfs[key] = normalized
         return extracted_dfs
     except Exception as e:
-        st.error(f"Error extracting ZIP files: {e}")
+        st.error(f"Error reading GSC Archive: {e}")
         return None
 
 # =========================================================================
-# CORE APPLICATION EXECUTION
+# ANALYSIS AND RENDERING
 # =========================================================================
-uploaded_file = st.file_uploader("Drop your raw GSC ZIP File here:", type=["zip"])
+uploaded_file = st.file_uploader("Upload GSC ZIP Export:", type=["zip"])
 
 if uploaded_file is None:
-    st.info("💡 **Ready to grow?** Upload your GSC zip package, and the app will generate your roadmap instantly.")
+    st.info("📂 Drop your exported Search Console ZIP here. We will instantly map every leaking or underperforming keyword & URL relationship.")
 else:
-    with st.spinner("Analyzing Search Console parameters..."):
+    with st.spinner("Compiling negative SEO signals..."):
         gsc_data = unpack_and_analyze_zip(uploaded_file)
         
     if gsc_data and 'Queries' in gsc_data and 'Pages' in gsc_data:
         df_queries = gsc_data['Queries']
         df_pages = gsc_data['Pages']
         
-        # Apply brand filters
         if BRAND_KEYWORD:
             df_queries = df_queries[~df_queries['Queries'].str.lower().str.contains(BRAND_KEYWORD, na=False)]
+            
+        # 1. TRAFFIC BLEEDERS (Greatest Click Drop)
+        traffic_bleeders = df_queries[df_queries['Clicks_Delta'] < 0].sort_values(by='Clicks_Delta', ascending=True).head(10)
         
-        # =========================================================================
-        # REAL-TIME MAPPING & COMPUTATION
-        # =========================================================================
-        
-        # 1. Advanced Structural Cannibalization Mapping
-        conflict_results = []
+        # 2. CANNIBALIZATION MAP
+        cannibal_list = []
         queries_sorted = df_queries[df_queries['Impressions'] >= MIN_IMPRESSIONS].sort_values(by='Impressions', ascending=False)
-        
-        for idx, q_row in queries_sorted.head(150).iterrows():
+        for idx, q_row in queries_sorted.head(100).iterrows():
             query_txt = q_row['Queries']
             q_pos = q_row['Position']
-            q_clicks_delta = q_row['Clicks_Delta']
             
-            # Map queries with competing URL sets
             matching_urls = df_pages[
-                (df_pages['Position'] >= q_pos - MAX_POSITION_GAP) & 
-                (df_pages['Position'] <= q_pos + MAX_POSITION_GAP) &
+                (df_pages['Position'] >= q_pos - MAX_CANNIBAL_GAP) & 
+                (df_pages['Position'] <= q_pos + MAX_CANNIBAL_GAP) &
                 (df_pages['Impressions'] >= MIN_IMPRESSIONS / 2)
             ].sort_values(by=['Clicks', 'Impressions'], ascending=[False, False])
             
             if len(matching_urls) > 1:
                 primary_url = matching_urls.iloc[0]['Pages']
-                primary_clicks = int(matching_urls.iloc[0]['Clicks'])
                 primary_pos = round(matching_urls.iloc[0]['Position'], 1)
                 
                 for sub_idx in range(1, min(len(matching_urls), 3)):
                     sub_row = matching_urls.iloc[sub_idx]
                     cannibal_url = sub_row['Pages']
-                    cannibal_clicks = int(sub_row['Clicks'])
                     cannibal_pos = round(sub_row['Position'], 1)
                     
-                    pos_gap = abs(primary_pos - cannibal_pos)
-                    
-                    if pos_gap <= MAX_POSITION_GAP and cannibal_url != primary_url:
-                        threat = "🔴 High Threat" if q_clicks_delta < 0 else "🟡 Moderate"
-                        conflict_results.append({
-                            "Threat Level": threat,
-                            "Target Keyword": query_txt,
-                            "Primary Authority URL": primary_url,
-                            "Primary Position": primary_pos,
-                            "Primary Clicks": primary_clicks,
-                            "Cannibal Target URL": cannibal_url,
-                            "Cannibal Position": cannibal_pos,
-                            "Cannibal Clicks": cannibal_clicks,
-                            "Position Gap": pos_gap
+                    if cannibal_url != primary_url:
+                        cannibal_list.append({
+                            "Query": query_txt,
+                            "Primary Page (Keep)": primary_url,
+                            "Primary Pos": primary_pos,
+                            "Cannibal Page (Fix)": cannibal_url,
+                            "Cannibal Pos": cannibal_pos
                         })
+        df_cannibal = pd.DataFrame(cannibal_list).drop_duplicates(subset=['Query', 'Cannibal Page (Fix)']) if cannibal_list else pd.DataFrame()
         
-        df_conflicts = pd.DataFrame(conflict_results).drop_duplicates(subset=['Target Keyword', 'Cannibal Target URL']) if conflict_results else pd.DataFrame()
-        
-        # 2. Striking Distance Page-2 Wins
-        striking_df = df_queries[
-            (df_queries['Position'] >= 11.0) & 
-            (df_queries['Position'] <= 20.0) & 
-            (df_queries['Impressions'] >= MIN_IMPRESSIONS)
-        ].sort_values(by='Impressions', ascending=False)
-        
-        # 3. CTR Underperformers
-        ctr_boosters = []
-        top_rank_queries = df_queries[(df_queries['Position'] <= 10) & (df_queries['Impressions'] >= MIN_IMPRESSIONS)]
-        
-        for _, row in top_rank_queries.iterrows():
+        # 3. UNDERPERFORMING CTR (Page 1 Underachievers)
+        ctr_leaks = []
+        page1_queries = df_queries[(df_queries['Position'] <= 10) & (df_queries['Impressions'] >= MIN_IMPRESSIONS)]
+        for _, row in page1_queries.iterrows():
             kw = row['Queries']
             clicks = row['Clicks']
             impr = row['Impressions']
             actual_ctr = row['CTR']
             pos = round(row['Position'])
             
-            benchmark_ctr = CTR_BENCHMARKS.get(pos, 2.0)
-            if actual_ctr < (benchmark_ctr * 0.7):
-                ctr_boosters.append({
+            benchmark = CTR_BENCHMARKS.get(pos, 2.0)
+            if actual_ctr < (benchmark * 0.7): # 30% below expected standard
+                ctr_leaks.append({
                     "Keyword": kw,
-                    "Ranking Position": pos,
-                    "Actual CTR": round(actual_ctr, 2),
-                    "Benchmark CTR": benchmark_ctr,
-                    "Click Deficit": int((impr * (benchmark_ctr / 100)) - clicks)
+                    "Rank": pos,
+                    "Actual CTR": f"{round(actual_ctr, 1)}%",
+                    "Expected CTR": f"{benchmark}%",
+                    "Lost Clicks": int((impr * (benchmark / 100)) - clicks)
                 })
-        df_ctr = pd.DataFrame(ctr_boosters).sort_values(by='Click Deficit', ascending=False) if ctr_boosters else pd.DataFrame()
+        df_ctr_leaks = pd.DataFrame(ctr_leaks).sort_values(by='Lost Clicks', ascending=False) if ctr_leaks else pd.DataFrame()
 
         # =========================================================================
-        # EXECUTIVE BRIEFING RENDERING
+        # RENDER ACTION BOARD
         # =========================================================================
-        st.markdown(f"""
-        <div class="executive-banner">
-            <h2>📋 SEO Director's Monday Morning Priorities</h2>
-            <p>No spreadsheets, no manual formulas. Here are your exact, mathematically calculated optimizations to run this week.</p>
+        st.markdown("""
+        <div class="fix-banner">
+            <h2>🚨 Organic Performance Deficit & Fix Roadmap</h2>
+            <p>Every item listed below represents missed traffic, ranking loss, or poor click efficiency. Fix these issues to recover your performance.</p>
         </div>
         """, unsafe_allow_html=True)
         
-        # Layout Division
-        col_main, col_sidebar_opps = st.columns([1.1, 0.9])
+        col_left, col_right = st.columns([1, 1])
         
-        with col_main:
-            st.subheader("🔴 Urgent Priority: Fix Keyword Cannibalization")
-            st.write("These competing pages are clashing over the same keywords, hurting your search positions. We mapped the exact URLs so you don't have to look them up:")
+        with col_left:
+            st.subheader("🔴 Structural & Authority Leaks")
             
-            if not df_conflicts.empty:
-                # Select top 5 critical target scenarios directly
-                for idx, row in df_conflicts.head(5).reset_index(drop=True).iterrows():
+            # Show Cannibalization
+            st.write("#### 1. Keyword Cannibalization (Internal Page Fights)")
+            if not df_cannibal.empty:
+                for idx, row in df_cannibal.head(3).reset_index(drop=True).iterrows():
                     st.markdown(f"""
-                    <div class="seo-card card-critical">
-                        <span class="badge badge-red">Cannibalization Conflict #{idx+1}</span>
-                        <h4 style="margin: 4px 0; color: #1e293b;">Conflict Query: "{row['Target Keyword']}"</h4>
-                        
-                        <p style="margin: 10px 0 2px 0; font-size: 0.85rem; font-weight: bold; color: #0f172a;">🛡️ Primary Authority URL (Keep this one):</p>
-                        <div class="url-block">{row['Primary Authority URL']}</div>
-                        
-                        <p style="margin: 0 0 2px 0; font-size: 0.85rem; font-weight: bold; color: #991b1b;">⚠️ Conflicting Cannibal URL (De-optimize this):</p>
-                        <div class="url-block">{row['Cannibal Target URL']}</div>
-                        
-                        <p style="margin: 4px 0; font-size: 0.9rem; color: #334155;">
-                            <b>Impact:</b> The primary URL sits at position <b>{row['Primary Position']}</b> while the competitor page is pulling search weight at position <b>{row['Cannibal Position']}</b>.
-                        </p>
-                        <p style="margin: 8px 0 0 0; font-weight: bold; font-size: 0.85rem; color: #dc2626;">
-                            👉 Directive: Edit the <i>Conflicting Cannibal URL</i>. Link from it over to the <i>Primary Authority URL</i> using exact match anchor text: "{row['Target Keyword']}".
+                    <div class="error-card">
+                        <span class="fix-badge badge-red">Cannibalization Deficit #{idx+1}</span>
+                        <h5 style="margin:0 0 4px 0;">Target Search: "{row['Query']}"</h5>
+                        <p style="margin: 4px 0; font-size: 0.85rem; font-weight: bold; color: #1e293b;">Primary Authority URL (Keep and strengthen):</p>
+                        <div class="code-box">{row['Primary Page (Keep)']} (Rank: {row['Primary Pos']})</div>
+                        <p style="margin: 4px 0; font-size: 0.85rem; font-weight: bold; color: #991b1b;">Conflicting URL (Diluting authority):</p>
+                        <div class="code-box">{row['Cannibal Page (Fix)']} (Rank: {row['Cannibal Pos']})</div>
+                        <p style="margin: 6px 0 0 0; font-size: 0.85rem; color: #475569; line-height: 1.4;">
+                            <b>Fix Action:</b> Open the Conflicting URL page and link exact-match anchor text ("{row['Query']}") directly to your Primary Authority URL. Consider trimming matching keyword variations from the title/H1 headers of the Conflicting page.
                         </p>
                     </div>
                     """, unsafe_allow_html=True)
             else:
-                st.success("🎉 Excellent! No duplicate URL keyword overlap discovered in GSC datasets.")
+                st.success("No critical cannibalization trends found!")
                 
-            # CTR Opportunities Section
-            st.markdown("<br/>", unsafe_allow_html=True)
-            st.subheader("⚡ High Impact: Underperforming Page-1 CTR")
-            st.write("These keywords rank on Page 1 but are receiving significantly fewer clicks than they should. Revamping their Metadata will instantly boost your traffic.")
-            
-            if not df_ctr.empty:
-                for idx, row in df_ctr.head(3).reset_index(drop=True).iterrows():
+            # Show CTR Underachievers
+            st.write("#### 2. Click Efficiency Deficits (Page-1 CTR Drops)")
+            if not df_ctr_leaks.empty:
+                for idx, row in df_ctr_leaks.head(3).reset_index(drop=True).iterrows():
                     st.markdown(f"""
-                    <div class="seo-card card-warning">
-                        <span class="badge badge-yellow">CTR Boost Target #{idx+1}</span>
-                        <h4 style="margin: 4px 0; color: #1e293b;">Query: "{row['Keyword']}"</h4>
-                        <p style="margin: 8px 0; font-size: 0.9rem; color: #334155;">
-                            Currently ranking at Position <b>{row['Ranking Position']}</b>. Your CTR is only <b>{row['Actual CTR']}%</b> (Industry Benchmark is <b>{row['Benchmark CTR']}%</b>). 
-                            You missed out on <b>{row['Click Deficit']} clicks</b> because of this layout gap.
+                    <div class="warning-card">
+                        <span class="fix-badge badge-orange">CTR Optimization Needed #{idx+1}</span>
+                        <h5 style="margin:0 0 4px 0;">Keyword: "{row['Keyword']}"</h5>
+                        <p style="margin: 4px 0; font-size: 0.85rem; color: #475569;">
+                            Ranks at Position <b>{row['Rank']}</b>, but CTR is only <b>{row['Actual CTR']}</b> (vs. <b>{row['Expected CTR']}</b> benchmark). 
+                            You leaked <b>{row['Lost Clicks']} potential clicks</b> simply due to low-impact presentation.
                         </p>
-                        <p style="margin: 6px 0 0 0; font-weight: bold; font-size: 0.85rem; color: #d97706;">
-                            👉 Directive: Update the Title Tag of the page ranking for this query. Add emotional triggers, years, or lists to make your search result stand out.
-                        </p>
-                    </div>
-                    """, unsafe_allow_html=True)
-                    
-        with col_sidebar_opps:
-            st.subheader("🚀 Quick Wins: Page-2 'Striking Distance' Targets")
-            st.write("These keywords sit just on Page 2 (Positions 11–20) with high search volume. A quick optimization push will jump them to Page 1 for an easy win.")
-            
-            if not striking_df.empty:
-                for idx, row in striking_df.head(4).reset_index(drop=True).iterrows():
-                    st.markdown(f"""
-                    <div class="seo-card card-success">
-                        <span class="badge badge-green">Striking Distance #{idx+1}</span>
-                        <h4 style="margin: 4px 0; color: #1e293b;">Target Keyword: "{row['Queries']}"</h4>
-                        <p style="margin: 8px 0; font-size: 0.9rem; color: #334155;">
-                            Currently ranking at Position <b>{round(row['Position'], 1)}</b> with <b>{int(row['Impressions'])} total impressions</b>.
-                        </p>
-                        <p style="margin: 6px 0 0 0; font-weight: bold; font-size: 0.85rem; color: #059669;">
-                            👉 Directive: Add this keyword to your page's H2 or H3 headers. Build 1-2 new paragraphs answering common search questions around this term.
+                        <p style="margin: 6px 0 0 0; font-size: 0.85rem; font-weight: bold; color: #92400e; line-height: 1.4;">
+                            <b>Fix Action:</b> Rewrite the metadata for the page ranking for this query. Use brackets, clear action-oriented modifiers, or numbers in the meta title to capture search intent more effectively.
                         </p>
                     </div>
                     """, unsafe_allow_html=True)
             else:
-                st.info("No matching striking distance parameters detected.")
+                st.success("All Page-1 rankings are winning healthy click volume!")
+                
+        with col_right:
+            st.subheader("📉 Traffic Loss & Visibility Deficits")
+            
+            # Show Dropping Keywords
+            st.write("#### 3. Traffic Bleeders (Largest Click Losses)")
+            if not traffic_bleeders.empty:
+                for idx, row in traffic_bleeders.head(4).reset_index(drop=True).iterrows():
+                    st.markdown(f"""
+                    <div class="error-card">
+                        <span class="fix-badge badge-red">Decline Signal #{idx+1}</span>
+                        <h5 style="margin:0 0 4px 0;">Keyword: "{row['Queries']}"</h5>
+                        <p style="margin: 4px 0; font-size: 0.85rem; color: #475569;">
+                            This keyword lost <b>{int(abs(row['Clicks_Delta']))} clicks</b> over the previous period. Current position: <b>{round(row['Position'], 1)}</b>.
+                        </p>
+                        <p style="margin: 6px 0 0 0; font-size: 0.85rem; font-weight: bold; color: #b91c1c; line-height: 1.4;">
+                            <b>Fix Action:</b> Check the historical ranking trend. If position has slipped, update the page with updated context, clear subheadings, and verify that the target content is still serving the core search intent.
+                        </p>
+                    </div>
+                    """, unsafe_allow_html=True)
+            else:
+                st.info("No negative click trend detected in your dataset.")
+                
+            # Show Device issues
+            st.write("#### 4. Mobile Layout Performance Gaps")
+            if 'Devices' in gsc_data:
+                df_dev = gsc_data['Devices']
+                mob_row = df_dev[df_dev['Devices'].str.lower() == 'mobile']
+                desk_row = df_dev[df_dev['Devices'].str.lower() == 'desktop']
+                
+                if not mob_row.empty and not desk_row.empty:
+                    m_ctr = mob_row.iloc[0]['CTR']
+                    d_ctr = desk_row.iloc[0]['CTR']
+                    
+                    if m_ctr < (d_ctr * 0.8):
+                        st.markdown(f"""
+                        <div class="error-card">
+                            <span class="fix-badge badge-red">Mobile Deficit Alert</span>
+                            <h5 style="margin:0 0 4px 0;">Mobile CTR Underperforming Desktop</h5>
+                            <p style="margin: 4px 0; font-size: 0.85rem; color: #475569;">
+                                Mobile CTR: <b>{round(m_ctr, 2)}%</b> | Desktop CTR: <b>{round(d_ctr, 2)}%</b>. 
+                                Mobile listings are under-converting desktop clicks by over 20%.
+                            </p>
+                            <p style="margin: 6px 0 0 0; font-size: 0.85rem; font-weight: bold; color: #b91c1c; line-height: 1.4;">
+                                <b>Fix Action:</b> Run mobile-friendliness or Core Web Vitals checks. Verify viewports, ensure button layout elements are not jumping (LCP/CLS issues), and confirm dynamic content displays properly on smaller screens.
+                            </p>
+                        </div>
+                        """, unsafe_allow_html=True)
+                    else:
+                        st.success("Mobile and desktop click ratios are healthy and closely aligned!")
+            else:
+                st.info("Upload `devices.csv` to diagnostic tools to check for cross-device visibility drops.")
 
         # =========================================================================
-        # TABBED VIEW FOR RAW DATA TABLES (FIXED 1-BASED INDEXES)
+        # 1-INDEXED NEGATIVE DEEP DIVE TABLES
         # =========================================================================
         st.markdown("---")
-        st.subheader("📊 Supplementary Data Tables")
+        st.subheader("📊 Supplementary Deficit Tables (Negative Focus)")
         
-        tab_c, tab_s, tab_ctr, tab_d = st.tabs([
-            "🎯 All Cannibalization Mappings",
-            "🚀 Striking Distance Terms",
-            "📈 CTR Underperformers List",
-            "📱 Device Usability"
+        tab_bleeder, tab_c_raw, tab_ctr_raw = st.tabs([
+            "📉 Complete Traffic Bleeder List", 
+            "🎯 Detailed Cannibalization Overlaps", 
+            "📈 Complete CTR Deficit List"
         ])
         
-        with tab_c:
-            if not df_conflicts.empty:
-                df_conflicts_disp = df_conflicts.copy()
-                df_conflicts_disp.index = np.arange(1, len(df_conflicts_disp) + 1)
-                st.dataframe(df_conflicts_disp, use_container_width=True)
-            else:
-                st.write("No cannibalizations resolved.")
+        with tab_bleeder:
+            if not traffic_bleeders.empty:
+                disp_bleed = traffic_bleeders[['Queries', 'Clicks', 'Impressions', 'CTR', 'Position', 'Clicks_Delta']].copy()
+                disp_bleed.index = np.arange(1, len(disp_bleed) + 1)
+                st.dataframe(disp_bleed, use_container_width=True)
                 
-        with tab_s:
-            if not striking_df.empty:
-                striking_df_disp = striking_df[['Queries', 'Clicks', 'Impressions', 'CTR', 'Position']].copy()
-                striking_df_disp.index = np.arange(1, len(striking_df_disp) + 1)
-                st.dataframe(striking_df_disp, use_container_width=True)
-            else:
-                st.write("No Page 2 metrics captured.")
+        with tab_c_raw:
+            if not df_cannibal.empty:
+                disp_cannibal = df_cannibal.copy()
+                disp_cannibal.index = np.arange(1, len(disp_cannibal) + 1)
+                st.dataframe(disp_cannibal, use_container_width=True)
                 
-        with tab_ctr:
-            if not df_ctr.empty:
-                df_ctr_disp = df_ctr.copy()
-                df_ctr_disp.index = np.arange(1, len(df_ctr_disp) + 1)
-                st.dataframe(df_ctr_disp, use_container_width=True)
-            else:
-                st.write("No CTR optimizations required.")
-                
-        with tab_d:
-            if 'Devices' in gsc_data:
-                df_dev_disp = gsc_data['Devices'].copy()
-                df_dev_disp.index = np.arange(1, len(df_dev_disp) + 1)
-                st.dataframe(df_dev_disp, use_container_width=True)
-            else:
-                st.write("Device statistics not found in GSC ZIP.")
+        with tab_ctr_raw:
+            if not df_ctr_leaks.empty:
+                disp_ctr = df_ctr_leaks.copy()
+                disp_ctr.index = np.arange(1, len(disp_ctr) + 1)
+                st.dataframe(disp_ctr, use_container_width=True)
                 
     else:
-        st.error("❌ Invalid GSC ZIP File: Please upload the unaltered ZIP exported directly from Google Search Console.")
+        st.error("❌ Invalid GSC ZIP Format. Please upload a direct, unmodified ZIP archive from Google Search Console.")
