@@ -113,17 +113,6 @@ st.markdown("""
         color: #e2e8f0;
     }
 
-    .warning-tag {
-        background-color: #7c2d12;
-        color: #fdba74;
-        padding: 2px 8px;
-        border-radius: 4px;
-        font-size: 0.75rem;
-        font-weight: bold;
-        display: inline-block;
-        margin-top: 4px;
-    }
-
     .verified-tag {
         background-color: #064e3b;
         color: #6ee7b7;
@@ -154,7 +143,7 @@ st.markdown("""
 st.markdown("""
 <div class="hero-banner">
     <h1>🕵️ Algorithmic SEO Detective (High-Precision Edition)</h1>
-    <p>This upgraded release uses hard semantic scoring filters to map keywords to exact core landing page slugs, identifying mismatched intents with a secondary automated validation flag.</p>
+    <p>This upgraded release uses hard semantic scoring filters to map keywords to exact core landing page slugs, identifying mismatched intents with an automated validation flag.</p>
 </div>
 """, unsafe_allow_html=True)
 
@@ -295,13 +284,13 @@ def find_best_url_match_precise(query_row, df_pages, max_offset=6.0):
         token_matches = sum(1 for token in core_nouns if token in url_path)
         score += (token_matches * 5)
         
-        # Rule 2: Strict anchor keyword bonus (e.g., if query has kybella, url MUST have kybella)
+        # Rule 2: Strict anchor keyword bonus
         for critical_word in ['kybella', 'earlobe', 'piercing', 'mounjaro', 'tirzepatide', 'botox']:
             if critical_word in query_str:
                 if critical_word in url_path:
-                    score += 20  # Heavy structural weight bonus
+                    score += 20  
                 else:
-                    score -= 15  # Penalty for mismatching core service
+                    score -= 15  
                     
         # Rule 3: Geo-location alignment check
         for geo in ['weehawken', 'hoboken', 'jersey']:
@@ -318,7 +307,6 @@ def find_best_url_match_precise(query_row, df_pages, max_offset=6.0):
     # Confidence analysis validation flag
     is_highly_confident = True
     if best_url:
-        # If none of the actual service nouns are inside the URL, mark as unverified anomaly
         any_token_in_url = any(token in best_url.lower() for token in core_nouns)
         if not any_token_in_url and len(core_nouns) > 0:
             is_highly_confident = False
@@ -399,7 +387,7 @@ if uploaded_file is not None:
             if not decay_queries.empty:
                 for idx, r in decay_queries.reset_index().iterrows():
                     mapped_url, confident = find_best_url_match_precise(r, df_p)
-                    badge = '<span class="verified-tag">✓ Confident Match</span>' if confident else '<span class="warning-tag">⚠️ Low Token Match - Verify URL</span>'
+                    badge = '<span class="verified-tag">✓ Confident Match</span>' if confident else ''
                     st.markdown(f"""
                     *   🔴 **Keyword:** `{r['Queries']}`  
                         *   **Current Rank:** {round(r['Position'], 1)}  
@@ -431,7 +419,7 @@ if uploaded_file is not None:
             if ctr_gaps_table:
                 sorted_gaps = sorted(ctr_gaps_table, key=lambda x: x['Click Loss'], reverse=True)[:15]
                 for idx, item in enumerate(sorted_gaps):
-                    badge = '<span class="verified-tag">✓ Confident Match</span>' if item['Confident'] else '<span class="warning-tag">⚠️ Verification Recommended via GSC</span>'
+                    badge = '<span class="verified-tag">✓ Confident Match</span>' if item['Confident'] else ''
                     st.markdown(f"""
                     *   🎯 **Keyword:** `{item['Keyword']}` (Rank: **{item['Rank']}**)  
                         *   **Your CTR:** {item['Actual CTR']} *(Expected Benchmark: {item['Target CTR']})*  
@@ -439,11 +427,6 @@ if uploaded_file is not None:
                         *   🔗 **Target URL:** `{item['URL']}` {badge}
                         *   *Directive:* Overhaul metadata optimization rules on this specific landing page.
                     """, unsafe_allow_html=True)
-                st.markdown("""
-                <div class="url-helper-box">
-                    💡 <b>How to get 100% exact mappings:</b> If you notice complex local terms cross-bleeding, go into Google Search Console, filter by that specific query, click the <b>"Pages"</b> tab, and use that specific URL.
-                </div>
-                """, unsafe_allow_html=True)
 
         # === TAB 4: CANNIBALIZATION ===
         with tab4:
@@ -496,7 +479,7 @@ if uploaded_file is not None:
             if not striking_kws.empty:
                 for idx, r in striking_kws.reset_index().iterrows():
                     mapped_url, confident = find_best_url_match_precise(r, df_p)
-                    badge = '<span class="verified-tag">✓ Confident Match</span>' if confident else '<span class="warning-tag">⚠️ Verify Target Asset</span>'
+                    badge = '<span class="verified-tag">✓ Confident Match</span>' if confident else ''
                     st.markdown(f"""
                     *   🚀 **Keyword:** `{r['Queries']}`  
                         *   **Current Rank:** {round(r['Position'], 1)} | **Impressions:** {int(r['Impressions'])}  
