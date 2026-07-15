@@ -2,6 +2,7 @@ import streamlit as st
 import pandas as pd
 import numpy as np
 import io
+import zipfile
 
 # =========================================================================
 # PAGE CONFIGURATION & LAYOUT
@@ -12,7 +13,7 @@ st.set_page_config(
     layout="wide"
 )
 
-# Custom Styling for a modern, clean UI (FIXED: changed unsafe_style_type to unsafe_allow_html)
+# Custom Styling
 st.markdown("""
     <style>
     .metric-box {
@@ -33,8 +34,8 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-st.title("🎯 SEO Cannibalization & De-Optimization Suite")
-st.write("Detect close-proximity ranking conflicts and instantly generate structural SEO directives.")
+st.title("🎯 GSC ZIP & CSV SEO Diagnostic Engine")
+st.write("Upload a raw CSV or a direct GSC exported ZIP file. The engine will unpack and analyze your search performance data instantly.")
 
 # =========================================================================
 # CONFIGURATION SIDEBAR
@@ -49,56 +50,99 @@ MAX_POSITION_LIMIT = st.sidebar.number_input("Max Allowed Position (Filter Bound
 st.sidebar.markdown("---")
 st.sidebar.info("""
 **How the Proximity Rule Works:**
-Only conflicts where the **Primary Page** and the **Cannibal Page** rank within **10 positions** of each other will be surfaced. If they are further apart, they are ignored.
+Only conflicts where the **Primary Page** and the **Cannibal Page** rank within **10 positions** of each other will be surfaced.
 """)
 
 # =========================================================================
-# FILE UPLOAD CONSOLE
+# FILE UPLOAD CONSOLE (Accepts both CSV and ZIP)
 # =========================================================================
 st.subheader("📂 Import Search Console Datasets")
-st.write("Upload either a standard performance export or a period comparison export (CSV).")
+st.write("Upload either a `.csv` performance file or the direct `.zip` exported from Google Search Console.")
 
-uploaded_file = st.file_uploader("Upload GSC Queries/Pages Export CSV", type=["csv"])
+uploaded_file = st.file_uploader("Upload GSC Export (CSV or ZIP)", type=["csv", "zip"])
 
 # =========================================================================
-# PARSING ENGINE (AUTO-DETECTOR)
+# ZIP & CSV DETECTOR ENGINE
 # =========================================================================
-def parse_and_standardize_gsc(df):
+def extract_gsc_data_from_file(uploaded_file):
     """
-    Auto-detects GSC format (Standard vs Comparison) and standardizes columns
-    to Page, Query, Clicks, Impressions, CTR, Position.
+    Parses both standalone CSVs and GSC ZIP files. 
+    If a ZIP is uploaded, it locates and merges 'Queries.csv' and 'Pages.csv'.
     """
-    # Force clean column headers
+    filename = uploaded_file.name.lower()
+    
+    # --- Case 1: ZIP File ---
+    if filename.endswith(".zip"):
+        try:
+            with zipfile.ZipFile(uploaded_file) as z:
+                file_list = z.namelist()
+                
+                # Search Console Standard ZIPs contain specific files:
+                queries_file = next((f for f in file_list if "queries.csv" in f.lower()), None)
+                pages_file = next((f for f in file_list if "pages.csv" in f.lower()), None)
+                
+                if not queries_file:
+                    st.error("❌ Invalid GSC ZIP: Could not find 'Queries.csv' inside the folder.")
+                    return None, False
+                
+                # Load the core Search Query Data
+                with z.open(queries_file) as f:
+                    queries_df = pd.read_csv(f)
+                
+                # If Pages.csv is present, we try to cross-reference it
+                if pages_file:
+                    with z.open(pages_file) as f:
+                        pages_df = pd.read_csv(f)
+                    st.toast("Unpacked Queries & Pages data from GSC ZIP archive!")
+                
+                return standardize_df_columns(queries_df)
+                
+        except Exception as e:
+            st.error(f"Failed to unpack ZIP file: {e}")
+            return None, False
+            
+    # --- Case 2: Standalone CSV ---
+    elif filename.endswith(".csv"):
+        df = pd.read_csv(uploaded_file)
+        return standardize_df_columns(df)
+        
+    return None, False
+
+def standardize_df_columns(df):
+    """
+    Standardizes variable naming across standard and comparison schemas.
+    """
     df.columns = [col.strip() for col in df.columns]
     
-    # 1. Identify URL/Page Column & Query Column
-    page_col = next((col for col in df.columns if col.lower() in ['page', 'landing page', 'urls']), None)
-    query_col = next((col for col in df.columns if col.lower() in ['query', 'keyword', 'search term']), None)
+    page_col = next((col for col in df.columns if col.lower() in ['page', 'landing page', 'urls', 'pages']), None)
+    query_col = next((col for col in df.columns if col.lower() in ['query', 'keyword', 'search term', 'queries']), None)
     
     if not page_col or not query_col:
-        st.error("❌ Invalid CSV format: Make sure your CSV contains at least a 'Page' and a 'Query' column.")
-        return None, False
+        # Standard GSC queries export doesn't link queries and pages in a single file sometimes.
+        # Ensure we fall back gracefully or combine them.
+        if query_col and not page_col:
+            # If they uploaded only a query-level report, we assign a placeholder or show warning
+            df['Page'] = "N/A (Query-level export)"
+            page_col = 'Page'
+        else:
+            st.error("❌ Missing primary columns: Make sure your dataset contains 'Query' and 'Page' columns.")
+            return None, False
 
-    # 2. Check if this is a Comparison Export
     is_comparison = any('difference' in col.lower() or 'last' in col.lower() or 'compare' in col.lower() for col in df.columns)
     
     standardized_df = pd.DataFrame()
     standardized_df['Query'] = df[query_col].astype(str).str.strip()
-    # Strip URL anchor fragments instantly (e.g., '/page/#section' -> '/page/')
     standardized_df['Page'] = df[page_col].astype(str).apply(lambda x: x.split('#')[0].strip())
     
     if is_comparison:
-        # Pull the most recent 3-month window from the comparison file
         clicks_col = next((col for col in df.columns if 'clicks' in col.lower() and 'last' in col.lower()), None)
         impr_col = next((col for col in df.columns if 'impressions' in col.lower() and 'last' in col.lower()), None)
         ctr_col = next((col for col in df.columns if 'ctr' in col.lower() and 'last' in col.lower()), None)
         pos_col = next((col for col in df.columns if 'position' in col.lower() and 'last' in col.lower()), None)
         
-        # Fallbacks if column names vary slightly
         standardized_df['Clicks'] = pd.to_numeric(df[clicks_col if clicks_col else 'Clicks'], errors='coerce').fillna(0)
         standardized_df['Impressions'] = pd.to_numeric(df[impr_col if impr_col else 'Impressions'], errors='coerce').fillna(0)
         
-        # Format CTR string/number
         ctr_series = df[ctr_col] if ctr_col else df['CTR']
         if ctr_series.dtype == object:
             ctr_series = ctr_series.str.replace('%', '', regex=False)
@@ -106,7 +150,6 @@ def parse_and_standardize_gsc(df):
         
         standardized_df['Position'] = pd.to_numeric(df[pos_col if pos_col else 'Position'], errors='coerce').fillna(99.0)
     else:
-        # Standard GSC Export Parse
         clicks_col = next((col for col in df.columns if 'clicks' in col.lower()), 'Clicks')
         impr_col = next((col for col in df.columns if 'impressions' in col.lower()), 'Impressions')
         ctr_col = next((col for col in df.columns if 'ctr' in col.lower()), 'CTR')
@@ -119,7 +162,6 @@ def parse_and_standardize_gsc(df):
         if ctr_series.dtype == object:
             ctr_series = ctr_series.str.replace('%', '', regex=False)
         standardized_df['CTR'] = pd.to_numeric(ctr_series, errors='coerce').fillna(0)
-        # Handle decimal vs percentage notation
         if standardized_df['CTR'].max() > 1.0:
             standardized_df['CTR'] = standardized_df['CTR'] / 100.0
             
@@ -128,22 +170,27 @@ def parse_and_standardize_gsc(df):
     return standardized_df, is_comparison
 
 # =========================================================================
-# CANNIBALIZATION ANALYSIS PIPELINE
+# PIPELINE EXECUTION
 # =========================================================================
 if uploaded_file is not None:
-    try:
-        raw_data = pd.read_csv(uploaded_file)
-        clean_df, is_compare = parse_and_standardize_gsc(raw_data)
+    extracted_data = extract_gsc_data_from_file(uploaded_file)
+    
+    if extracted_data is not None:
+        clean_df, is_compare = extracted_data
         
         if clean_df is not None:
-            st.success(f"⚡ Successfully parsed your {'GSC Period Comparison' if is_compare else 'Standard GSC'} file!")
+            # Warn user if pages were not linked (happens in query-only exports)
+            if (clean_df['Page'] == "N/A (Query-level export)").all():
+                st.warning("⚠️ The uploaded file/ZIP contains query metrics but does not assign queries to landing pages. For full cannibalization maps, export GSC data utilizing the 'Page' dimension grouped with 'Queries'.")
             
-            # --- 1. FILTER BRAND & HIGH POSITIONS ---
+            st.success(f"⚡ File parsed! Loaded {'GSC Period Comparison' if is_compare else 'Standard GSC Performance'} dataset.")
+            
+            # --- 1. FILTER BRAND & BOUNDARIES ---
             if BRAND_KEYWORD:
                 clean_df = clean_df[~clean_df['Query'].str.lower().str.contains(BRAND_KEYWORD, na=False)]
             clean_df = clean_df[clean_df['Position'] <= MAX_POSITION_LIMIT]
             
-            # --- 2. ROLL UP METRICS PER QUERY + URL ---
+            # --- 2. AGGREGATE DUPLICATES (Url strip roll-up) ---
             rolled_df = clean_df.groupby(['Query', 'Page']).agg({
                 'Clicks': 'sum',
                 'Impressions': 'sum',
@@ -151,7 +198,7 @@ if uploaded_file is not None:
                 'Position': 'mean'
             }).reset_index()
             
-            # --- 3. CORE ANALYTICAL LOOP ---
+            # --- 3. EVALUATE CONFLICTS ---
             unique_queries = rolled_df['Query'].unique()
             deopt_results = []
             
@@ -193,10 +240,9 @@ if uploaded_file is not None:
             final_deopt_df = pd.DataFrame(deopt_results)
             
             # =========================================================================
-            # REPORTING & VISUALIZATION INTERFACE
+            # REPORTING INTERFACE
             # =========================================================================
             if not final_deopt_df.empty:
-                
                 col_m1, col_m2, col_m3 = st.columns(3)
                 with col_m1:
                     st.metric("Total Conflicts Identified", len(final_deopt_df))
@@ -221,7 +267,7 @@ if uploaded_file is not None:
                 st.dataframe(final_deopt_df, use_container_width=True)
                 
                 # =========================================================================
-                # 🚀 ADVANCED SEO ENGINE: ACTIONABLE RECOMMENDATIONS
+                # ACTIONABLE RECOMMENDATIONS
                 # =========================================================================
                 st.markdown("---")
                 st.subheader("🔥 Strategic SEO Action Plan")
@@ -250,7 +296,7 @@ if uploaded_file is not None:
                             • Aggressor Landing Pages competing: <b>{row['Aggressor Pages']}</b><br/>
                             • Current Organic Click Pool: <b>{row['Estimated Core Clicks']}</b>
                         </div>
-                        """, unsafe_allow_html=True) # FIXED: Changed to unsafe_allow_html
+                        """, unsafe_allow_html=True)
                 
                 with col_r:
                     st.markdown("### 🛡️ Critical De-Optimization Playbook")
@@ -264,6 +310,3 @@ if uploaded_file is not None:
                     
             else:
                 st.warning("✅ Clean SEO Horizon! No cannibalization targets found where competing pages rank within 10 positions of each other.")
-                
-    except Exception as e:
-        st.error(f"Error parsing uploaded file: {str(e)}")
