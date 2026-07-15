@@ -14,7 +14,7 @@ except ImportError:
     import xlsxwriter
 
 # =========================================================================
-# 1. PREMIUM MIDNIGHT DARK THEME ENGINE
+# 1. PREMIUM MIDNIGHT DARK THEME ENGINE (FIXED "UPLOADPLOAD" BUG)
 # =========================================================================
 st.set_page_config(
     page_title="Enterprise GSC Forensic Hub",
@@ -22,7 +22,7 @@ st.set_page_config(
     layout="wide"
 )
 
-# Custom premium dark stylesheet injection
+# Custom premium dark stylesheet injection (Safe CSS targets to protect UI widgets)
 st.markdown("""
     <style>
     /* Premium Midnight Dark Page Background */
@@ -30,8 +30,8 @@ st.markdown("""
         background-color: #0f172a !important; 
     }
     
-    /* Global Typography - Neon & soft white text for absolute readability */
-    h1, h2, h3, h4, h5, h6, p, label, span, div { 
+    /* Safely target only Headings and specified elements to prevent uploader overlap */
+    h1, h2, h3, h4, h5, h6, .metric-title, .metric-desc { 
         color: #f8fafc !important; 
         font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
     }
@@ -133,7 +133,12 @@ st.markdown("""
         box-shadow: 0 4px 6px rgba(0,0,0,0.2);
     }
     
-    /* Strict Widget Label Formatting */
+    /* Explicit color for standard Streamlit text elements without breaking input files */
+    .stMarkdown p, .stMarkdown span {
+        color: #e2e8f0 !important;
+    }
+    
+    /* Keep widget labels crisp and clean */
     label[data-testid="stWidgetLabel"] p {
         color: #cbd5e1 !important;
         font-weight: 700 !important;
@@ -156,7 +161,7 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # =========================================================================
-# 2. INLINE CONFIGURATION BOARD (HIGH-CONTRAST DARK CONTROLS)
+# 2. INLINE CONFIGURATION BOARD
 # =========================================================================
 st.markdown("### ⚙️ Engine Control Panel")
 
@@ -179,10 +184,12 @@ for pos in range(11, 31):
     CTR_BENCHMARKS[pos] = round(15.0 / pos, 2)
 
 # =========================================================================
-# 3. DATA CLEANING & PARSING PIPE
+# 3. ROBUST GSC SHEET COMPARISON ENGINE
 # =========================================================================
 def parse_gsc_sheet(df, dim_name):
     df.columns = [c.strip() for c in df.columns]
+    
+    # Locate the query/page identity column
     target_col = next((c for c in df.columns if c.lower() in [
         dim_name.lower(), 'query', 'page', 'device', 'country', 'search appearance', f'top {dim_name.lower()}'
     ]), None)
@@ -197,27 +204,50 @@ def parse_gsc_sheet(df, dim_name):
     if dim_name == 'Pages':
         normalized = normalized[~normalized['Pages'].str.lower().str.contains('utm_|_utm|utm=', na=False)]
         
+    # Robust metric grabber capable of handling standard and comparison GSC schemas
     def extract_stats(keywords, default_val=0.0):
-        col = next((c for c in df.columns if any(k in c.lower() for k in keywords) and 'difference' not in c.lower() and 'previous' not in c.lower()), None)
-        diff_col = next((c for c in df.columns if any(k in c.lower() for k in keywords) and 'difference' in c.lower()), None)
+        # Look for the primary current value (avoiding "previous" or "difference" columns)
+        col = next((c for c in df.columns if any(k in c.lower() for k in keywords) 
+                    and 'difference' not in c.lower() 
+                    and 'previous' not in c.lower() 
+                    and 'compare' not in c.lower()), None)
+        
+        # Look for dynamic change/difference metrics
+        diff_col = next((c for c in df.columns if any(k in c.lower() for k in keywords) 
+                         and ('difference' in c.lower() or 'delta' in c.lower() or 'change' in c.lower())), None)
+        
+        # If no explicit "difference" column is present, try calculation with "previous" values if they exist
+        prev_col = next((c for c in df.columns if any(k in c.lower() for k in keywords) 
+                         and 'previous' in c.lower()), None)
         
         val_series = pd.to_numeric(df[col], errors='coerce').fillna(default_val) if col else pd.Series(default_val, index=df.index)
-        delta_series = pd.to_numeric(df[diff_col], errors='coerce').fillna(0.0) if diff_col else pd.Series(0.0, index=df.index)
+        
+        if diff_col:
+            # Clean possible percent or sign formatting in differences
+            diff_clean = df[diff_col].astype(str).str.replace('%', '', regex=False).str.replace('+', '', regex=False)
+            delta_series = pd.to_numeric(diff_clean, errors='coerce').fillna(0.0)
+        elif prev_col and col:
+            prev_series = pd.to_numeric(df[prev_col], errors='coerce').fillna(default_val)
+            delta_series = val_series - prev_series
+        else:
+            delta_series = pd.Series(0.0, index=df.index)
+            
         return val_series, delta_series
 
     normalized['Clicks'], normalized['Clicks_Delta'] = extract_stats(['click'])
     normalized['Impressions'], normalized['Impressions_Delta'] = extract_stats(['impression'])
     
+    # Extract & clean CTR metrics
     ctr_col = next((c for c in df.columns if 'ctr' in c.lower() and 'difference' not in c.lower() and 'previous' not in c.lower()), None)
     if ctr_col:
         normalized['CTR'] = df[ctr_col].astype(str).str.replace('%', '', regex=False)
         normalized['CTR'] = pd.to_numeric(normalized['CTR'], errors='coerce').fillna(0.0)
     else:
-        normalized['CTR'] = (normalized['Clicks'] / normalized['Impressions'] * 100).fillna(0.0)
+        normalized['CTR'] = ((normalized['Clicks'] / normalized['Impressions']) * 100).fillna(0.0)
         
     normalized['Position'], normalized['Position_Delta'] = extract_stats(['position'], default_val=99.0)
     
-    # Strictly enforce max position boundary ≤ 30
+    # Keep strictly within Search Range <= 30
     normalized = normalized[normalized['Position'] <= 30.0]
     return normalized
 
@@ -249,7 +279,7 @@ def make_csv_download(df, name):
     st.download_button("💾 Export CSV Sheet", csv_encoded, key=f"dl_{name}", file_name=name, mime="text/csv")
 
 # =========================================================================
-# 4. EXECUTION PIPELINE
+# 4. RUN ANALYTICAL PIPELINE
 # =========================================================================
 uploaded_file = st.file_uploader("Upload GSC ZIP file below to begin analysis:", type=["zip"])
 
@@ -263,15 +293,15 @@ if uploaded_file is not None:
         # Apply brand filtering dynamically
         df_q = df_q_raw[~df_q_raw['Queries'].str.lower().str.contains(BRAND_TERM, na=False)].copy() if BRAND_TERM else df_q_raw.copy()
         
-        # Calculate KPI variables
+        # Calculate comparison trends
         clicks_curr = df_q['Clicks'].sum()
         clicks_delta = df_q['Clicks_Delta'].sum()
-        clicks_prev = max(1, clicks_curr - clicks_delta)
+        clicks_prev = max(1.0, clicks_curr - clicks_delta)
         clicks_change_pct = round((clicks_delta / clicks_prev) * 100, 2)
         
         impr_curr = df_q['Impressions'].sum()
         impr_delta = df_q['Impressions_Delta'].sum()
-        impr_prev = max(1, impr_curr - impr_delta)
+        impr_prev = max(1.0, impr_curr - impr_delta)
         impr_change_pct = round((impr_delta / impr_prev) * 100, 2)
         
         avg_pos_shift = round(df_q['Position_Delta'].mean(), 2)
@@ -298,8 +328,6 @@ if uploaded_file is not None:
                         "Impressions": int(row['Impressions'])
                     })
         df_ctr_gaps = pd.DataFrame(ctr_gaps_table).sort_values(by="Click Gap Loss", ascending=False) if ctr_gaps_table else pd.DataFrame()
-        
-        health_score = int(max(10, min(100, 100 - (losing_queries_cnt / max(1, winning_queries_cnt + losing_queries_cnt) * 85))))
 
         # Render KPI Container
         st.markdown(f"""
@@ -313,7 +341,7 @@ if uploaded_file is not None:
                 <div class="kpi-lbl">Impressions Change</div>
             </div>
             <div class="kpi-card">
-                <div class="kpi-val warning">{avg_pos_shift}</div>
+                <div class="kpi-val {"positive" if avg_pos_shift < 0 else "negative" if avg_pos_shift > 0 else "warning"}">{avg_pos_shift}</div>
                 <div class="kpi-lbl">Avg Position Shift</div>
             </div>
             <div class="kpi-card">
