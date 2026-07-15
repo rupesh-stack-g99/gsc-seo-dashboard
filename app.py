@@ -14,7 +14,7 @@ except ImportError:
     import xlsxwriter
 
 # =========================================================================
-# 1. STYLE ENGINE & ADVANCED CSS STYLING
+# 1. PREMIUM HIGH-CONTRAST STYLE ENGINE
 # =========================================================================
 st.set_page_config(
     page_title="Enterprise GSC Forensic Hub",
@@ -22,129 +22,165 @@ st.set_page_config(
     layout="wide"
 )
 
-# Custom premium stylesheet injection
+# Custom premium stylesheet injection for rich typography and high-contrast tables
 st.markdown("""
     <style>
-    /* Global Background Adjustments */
-    .stApp { background-color: #f8fafc; }
-    
-    /* Global Typography Styling */
-    h1, h2, h3, h4, h5 { 
-        color: #0f172a !important; 
-        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
-        font-weight: 700 !important;
-        letter-spacing: -0.02em;
+    /* Force high-visibility light background for content area */
+    .stApp { 
+        background-color: #f8fafc !important; 
     }
     
-    /* Premium Header Area Styling */
+    /* Global Typography Styling - Jet-black headings for absolute readability */
+    h1, h2, h3, h4, h5, h6 { 
+        color: #0f172a !important; 
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
+        font-weight: 800 !important;
+        letter-spacing: -0.025em;
+        margin-top: 10px !important;
+    }
+    
+    /* Dark Slate Executive Header Block */
     .hero-banner {
         background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
         color: #ffffff !important;
-        padding: 32px;
+        padding: 36px;
         border-radius: 12px;
         font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
         margin-bottom: 30px;
-        box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+        box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
         border-left: 6px solid #6366f1;
     }
-    .hero-banner h1 { color: #ffffff !important; margin: 0 0 10px 0 !important; font-size: 2.2rem !important; }
-    .hero-banner p { color: #94a3b8; margin: 0; font-size: 1rem; line-height: 1.5; }
+    .hero-banner h1 { 
+        color: #ffffff !important; 
+        margin: 0 0 10px 0 !important; 
+        font-size: 2.2rem !important; 
+    }
+    .hero-banner p { 
+        color: #cbd5e1 !important; 
+        margin: 0; 
+        font-size: 1.05rem; 
+        line-height: 1.5; 
+        font-weight: 400;
+    }
     
-    /* Dynamic Performance Grid */
+    /* Config Panel Section Styling */
+    .config-card {
+        background-color: #ffffff;
+        border: 2px solid #cbd5e1;
+        border-radius: 12px;
+        padding: 24px;
+        margin-bottom: 30px;
+        box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);
+    }
+    
+    /* High-Contrast Dynamic Performance Metric Grid */
     .kpi-container {
         display: grid;
         grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-        gap: 16px;
-        margin-bottom: 25px;
+        gap: 20px;
+        margin-bottom: 30px;
     }
     
     .kpi-card {
         background-color: #ffffff;
-        border: 1px solid #e2e8f0;
-        border-radius: 10px;
-        padding: 20px;
-        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.02), 0 2px 4px -1px rgba(0, 0, 0, 0.02);
-        transition: transform 0.2s, box-shadow 0.2s;
-    }
-    .kpi-card:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.05), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+        border: 2px solid #e2e8f0;
+        border-radius: 12px;
+        padding: 24px;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+        text-align: center;
     }
     
     .kpi-val { 
-        font-size: 2rem; 
+        font-size: 2.2rem; 
         font-weight: 800; 
-        color: #0f172a; 
+        color: #0f172a !important; 
         font-family: "SF Mono", "Courier New", monospace; 
         line-height: 1.1;
     }
-    .kpi-val.positive { color: #10b981; }
-    .kpi-val.negative { color: #ef4444; }
-    .kpi-val.warning { color: #f59e0b; }
+    .kpi-val.positive { color: #059669 !important; }
+    .kpi-val.negative { color: #dc2626 !important; }
+    .kpi-val.warning { color: #d97706 !important; }
+    
     .kpi-lbl { 
-        font-size: 0.75rem; 
-        color: #64748b; 
+        font-size: 0.8rem; 
+        color: #475569 !important; 
         text-transform: uppercase; 
         letter-spacing: 0.08em; 
-        margin-top: 8px;
-        font-weight: 600;
+        margin-top: 10px;
+        font-weight: 700;
     }
     
-    /* Warning Cards / Alerts */
+    /* Action / Warning Directives Cards */
     .risk-banner {
         background-color: #fffbeb;
-        border-left: 5px solid #f59e0b;
-        padding: 16px;
-        border-radius: 6px;
+        border: 1px solid #fde68a;
+        border-left: 6px solid #d97706;
+        padding: 20px;
+        border-radius: 8px;
         margin-bottom: 20px;
     }
-    .risk-banner h4 { color: #b45309 !important; margin: 0 0 6px 0 !important; }
-    .risk-banner p { color: #78350f; margin: 0; font-size: 0.9rem; }
+    .risk-banner h4 { color: #92400e !important; margin: 0 0 6px 0 !important; font-size: 1.1rem !important; }
+    .risk-banner p { color: #78350f !important; margin: 0; font-size: 0.95rem; font-weight: 500; }
 
-    /* Streamlit overrides for premium styling */
+    /* Streamlit Interactive Component Cleanups */
     .stTabs [data-baseweb="tab-list"] {
         gap: 8px;
-        background-color: #f1f5f9;
-        padding: 6px;
-        border-radius: 8px;
+        background-color: #e2e8f0;
+        padding: 8px;
+        border-radius: 10px;
     }
     .stTabs [data-baseweb="tab"] {
         background-color: transparent;
-        border-radius: 6px;
-        color: #475569;
-        padding: 8px 16px;
-        font-weight: 600;
-        transition: background-color 0.2s, color 0.2s;
-    }
-    .stTabs [data-baseweb="tab"]:hover {
-        background-color: #e2e8f0;
-        color: #0f172a;
+        border-radius: 8px;
+        color: #334155 !important;
+        padding: 10px 20px;
+        font-weight: 700 !important;
+        font-size: 0.95rem;
     }
     .stTabs [aria-selected="true"] {
         background-color: #ffffff !important;
         color: #0f172a !important;
-        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        box-shadow: 0 4px 6px -1px rgba(0,0,0,0.08);
     }
     
-    /* Custom Download Buttons UI */
-    .stDownloadButton button {
-        background-color: #0f172a !important;
-        color: #ffffff !important;
-        border: none !important;
-        border-radius: 6px !important;
-        padding: 8px 16px !important;
-        font-weight: 600 !important;
-        transition: background-color 0.2s !important;
+    /* Explicit High-Contrast Dataframe text tweaks */
+    div[data-testid="stDataFrame"] table {
+        color: #0f172a !important;
     }
-    .stDownloadButton button:hover {
-        background-color: #1e293b !important;
+    
+    /* High-contrast labels for inputs */
+    label[data-testid="stWidgetLabel"] p {
+        color: #0f172a !important;
+        font-weight: 700 !important;
+        font-size: 0.95rem !important;
     }
     </style>
 """, unsafe_allow_html=True)
 
+# Title Area Block
+st.markdown("""
+<div class="hero-banner">
+    <h1>🛡️ Enterprise GSC Forensic Hub</h1>
+    <p>A high-performance diagnostic dashboard for raw Search Console exports. Analyzes keywords/pages strictly up to <b>Position 30</b>, scrubs UTM tracking flags automatically, and exposes high-yield organic opportunities.</p>
+</div>
+""", unsafe_allow_html=True)
+
 # =========================================================================
-# 2. CONFIGURATION & BENCHMARKS
+# 2. INLINE CONFIGURATION BOARD (REPLACED SIDEBAR)
 # =========================================================================
+st.markdown("### ⚙️ Engine Control Panel")
+with st.container():
+    st.markdown('<div class="config-card">', unsafe_allow_html=True)
+    cfg_col1, cfg_col2, cfg_col3 = st.columns(3)
+    with cfg_col1:
+        BRAND_TERM = st.text_input("Exclude Branded Searches:", value="botoxie").lower().strip()
+    with cfg_col2:
+        MIN_IMPR_THRESHOLD = st.number_input("Minimum Impressions Threshold:", min_value=1, value=100)
+    with cfg_col3:
+        MAX_CANNIBAL_OFFSET = st.slider("Cannibalization Search Space (Pos. Gap):", 1, 15, 8)
+    st.markdown('</div>', unsafe_allow_html=True)
+
+# CTR Benchmark targets configuration
 CTR_BENCHMARKS = {
     1: 30.0, 2: 15.0, 3: 10.0, 4: 7.0, 5: 5.0,
     6: 4.0,  7: 3.0,  8: 2.5,  9: 2.0,  10: 1.5
@@ -153,15 +189,7 @@ for pos in range(11, 31):
     CTR_BENCHMARKS[pos] = round(15.0 / pos, 2)
 
 # =========================================================================
-# 3. SIDEBAR ENGINE CONFIG
-# =========================================================================
-st.sidebar.markdown("### 🔧 Engine Configurations")
-BRAND_TERM = st.sidebar.text_input("Exclude Branded Searches", value="botoxie").lower().strip()
-MIN_IMPR_THRESHOLD = st.sidebar.number_input("Minimum Impressions Threshold", min_value=1, value=100)
-MAX_CANNIBAL_OFFSET = st.sidebar.slider("Cannibalization Max Position Gap", 1, 15, 8)
-
-# =========================================================================
-# 4. DATA CLEANING & PARSING PIPE
+# 3. DATA CLEANING & PARSING PIPE
 # =========================================================================
 def parse_gsc_sheet(df, dim_name):
     df.columns = [c.strip() for c in df.columns]
@@ -228,12 +256,12 @@ def extract_gsc_payload(uploaded_zip):
 
 def make_csv_download(df, name):
     csv_encoded = df.to_csv(index=False).encode('utf-8')
-    st.download_button("💾 Download Sheet", csv_encoded, file_name=name, mime="text/csv")
+    st.download_button("💾 Export CSV Sheet", csv_encoded, key=f"dl_{name}", file_name=name, mime="text/csv")
 
 # =========================================================================
-# 5. CORE APP INTERACTIVE WORKSPACE
+# 4. EXECUTION PIPELINE
 # =========================================================================
-uploaded_file = st.file_uploader("Upload your raw GSC ZIP export package:", type=["zip"])
+uploaded_file = st.file_uploader("Upload GSC ZIP file below to begin analysis:", type=["zip"])
 
 if uploaded_file is not None:
     gsc = extract_gsc_payload(uploaded_file)
@@ -245,7 +273,7 @@ if uploaded_file is not None:
         # Apply brand filtering dynamically
         df_q = df_q_raw[~df_q_raw['Queries'].str.lower().str.contains(BRAND_TERM, na=False)].copy() if BRAND_TERM else df_q_raw.copy()
         
-        # Calculate dynamic KPI diagnostics
+        # Calculate KPI variables
         clicks_curr = df_q['Clicks'].sum()
         clicks_delta = df_q['Clicks_Delta'].sum()
         clicks_prev = max(1, clicks_curr - clicks_delta)
@@ -261,7 +289,7 @@ if uploaded_file is not None:
         winning_queries_cnt = len(df_q[df_q['Clicks_Delta'] > 0])
         losing_queries_cnt = len(df_q[df_q['Clicks_Delta'] < 0])
         
-        # Estimate lost clicks due to CTR limits
+        # Estimate lost clicks due to CTR deficits
         est_lost_clicks = 0
         ctr_gaps_table = []
         for _, row in df_q[(df_q['Position'] <= 30.0) & (df_q['Impressions'] >= MIN_IMPR_THRESHOLD)].iterrows():
@@ -283,15 +311,7 @@ if uploaded_file is not None:
         
         health_score = int(max(10, min(100, 100 - (losing_queries_cnt / max(1, winning_queries_cnt + losing_queries_cnt) * 85))))
 
-        # Render Header Section
-        st.markdown(f"""
-        <div class="hero-banner">
-            <h1>🛡️ Enterprise SEO Forensic Platform</h1>
-            <p>Evaluating clean keyword data up to Position 30. Automatic removal of campaign parameters (UTMs) applied. Core organic safety factor computed at <b>{health_score}/100</b>.</p>
-        </div>
-        """, unsafe_allow_html=True)
-        
-        # KPI Grid
+        # Render KPI Container
         st.markdown(f"""
         <div class="kpi-container">
             <div class="kpi-card">
@@ -313,7 +333,7 @@ if uploaded_file is not None:
         </div>
         """, unsafe_allow_html=True)
 
-        # Unified Multi-Sheet Excel Compiler
+        # Multi-Sheet Excel Compiler
         output = io.BytesIO()
         with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
             df_q.head(500).to_excel(writer, sheet_name='Clean Queries', index=False)
@@ -323,7 +343,7 @@ if uploaded_file is not None:
         xlsx_compiled = output.getvalue()
         
         st.download_button(
-            label="📊 Download Complete Excel Audit Package (.xlsx)",
+            label="📊 Download Integrated Multi-Sheet Excel Report (.xlsx)",
             data=xlsx_compiled,
             file_name="gsc_enterprise_performance_audit.xlsx",
             mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
@@ -331,7 +351,7 @@ if uploaded_file is not None:
         
         st.markdown("<br/>", unsafe_allow_html=True)
 
-        # Main Interface Navigation tabs
+        # Navigation Hub for Forensic Sheets
         tab_kws, tab_pgs, tab_ctr, tab_can, tab_directives = st.tabs([
             "🔑 Keyword Forensic Reports", 
             "📄 Page Leakages", 
@@ -340,56 +360,56 @@ if uploaded_file is not None:
             "🤖 Algorithmic Directives"
         ])
         
-        # --- TAB 1: KEYWORD FORENSICS ---
+        # --- TAB 1: KEYWORDS ---
         with tab_kws:
             st.markdown("### Keyword Diagnostic Core")
             
             k1, k2 = st.columns(2)
             with k1:
-                st.write("#### 📉 Top Gaining Keywords")
+                st.markdown("#### 📈 Top Gaining Keywords")
                 gaining = df_q[df_q['Clicks_Delta'] > 0].sort_values(by='Clicks_Delta', ascending=False).head(25)
                 st.dataframe(gaining, use_container_width=True)
                 make_csv_download(gaining, "top_gaining_keywords.csv")
                 
-                st.write("#### 🎯 Striking Distance (Positions 4–10)")
+                st.markdown("#### 🎯 Striking Distance (Positions 4–10)")
                 striking = df_q[(df_q['Position'] >= 4.0) & (df_q['Position'] <= 10.0)].sort_values(by='Impressions', ascending=False).head(25)
                 st.dataframe(striking, use_container_width=True)
                 make_csv_download(striking, "striking_distance_keywords.csv")
                 
             with k2:
-                st.write("#### 🚨 Top Losing Keywords")
+                st.markdown("#### 🚨 Top Losing Keywords")
                 losing = df_q[df_q['Clicks_Delta'] < 0].sort_values(by='Clicks_Delta', ascending=True).head(25)
                 st.dataframe(losing, use_container_width=True)
                 make_csv_download(losing, "top_losing_keywords.csv")
                 
-                st.write("#### 📍 Optimization Opportunities (Positions 11–20)")
+                st.markdown("#### 📍 Page Two Optimization Options (Positions 11–20)")
                 page_two = df_q[(df_q['Position'] >= 11.0) & (df_q['Position'] <= 20.0)].sort_values(by='Impressions', ascending=False).head(25)
                 st.dataframe(page_two, use_container_width=True)
                 make_csv_download(page_two, "page_two_opportunities.csv")
 
-        # --- TAB 2: PAGE LEAKAGES ---
+        # --- TAB 2: PAGES ---
         with tab_pgs:
             st.markdown("### Landing Page Forensic Core")
             
             p1, p2 = st.columns(2)
             with p1:
-                st.write("#### 📈 Top Gaining Pages")
+                st.markdown("#### 📈 Top Gaining Pages")
                 pg_gain = df_p[df_p['Clicks_Delta'] > 0].sort_values(by='Clicks_Delta', ascending=False).head(25)
                 st.dataframe(pg_gain, use_container_width=True)
                 make_csv_download(pg_gain, "top_gaining_pages.csv")
                 
-                st.write("#### ♻️ Pages Requiring Fresh Content")
+                st.markdown("#### ♻️ Pages Requiring Fresh Content")
                 pg_refresh = df_p[(df_p['Position_Delta'] > 0.8) & (df_p['Clicks_Delta'] < 0)].sort_values(by='Impressions', ascending=False).head(25)
                 st.dataframe(pg_refresh, use_container_width=True)
                 make_csv_download(pg_refresh, "pages_needing_refresh.csv")
                 
             with p2:
-                st.write("#### 📉 Top Losing Pages")
+                st.markdown("#### 📉 Top Losing Pages")
                 pg_lose = df_p[df_p['Clicks_Delta'] < 0].sort_values(by='Clicks_Delta', ascending=True).head(25)
                 st.dataframe(pg_lose, use_container_width=True)
                 make_csv_download(pg_lose, "top_losing_pages.csv")
                 
-                st.write("#### 🔍 Missing Click Potential (Top 10 but low CTR)")
+                st.markdown("#### 🔍 Missing Click Potential (Top 10 with Low CTR)")
                 pg_potential = df_p[(df_p['Position'] <= 10.0) & (df_p['CTR'] < 1.8)].sort_values(by='Impressions', ascending=False).head(25)
                 st.dataframe(pg_potential, use_container_width=True)
                 make_csv_download(pg_potential, "pages_with_low_ctr_in_top10.csv")
@@ -403,7 +423,7 @@ if uploaded_file is not None:
             else:
                 st.info("No significant CTR gaps detected based on position benchmarks.")
 
-        # --- TAB 4: CANNIBALIZATION ---
+        # --- TAB 4: CANNIBALIZATION MAP ---
         with tab_can:
             st.markdown("### Organic Search Conflict Map")
             
@@ -414,7 +434,6 @@ if uploaded_file is not None:
                 query_txt = q_row['Queries']
                 q_pos = q_row['Position']
                 
-                # Fetch conflict pages nearby on positions
                 matching_urls = df_p[
                     (df_p['Position'] >= q_pos - MAX_CANNIBAL_OFFSET) & 
                     (df_p['Position'] <= q_pos + MAX_CANNIBAL_OFFSET) &
@@ -456,34 +475,32 @@ if uploaded_file is not None:
             with d1:
                 st.markdown("""
                 <div class="risk-banner">
-                    <h4>📋 Top Priority Refresh Targets</h4>
-                    <p>Re-evaluate helpful content structures and intent optimization for these URLs first to regain traffic momentum.</p>
+                    <h4>📋 Content Refresh Targets</h4>
+                    <p>Improve on-page intent optimization and information density for these URLs to capture rising keyword trends.</p>
                 </div>
                 """, unsafe_allow_html=True)
-                st.markdown("<br/>", unsafe_allow_html=True)
                 
                 bad_pages = df_p[(df_p['Position_Delta'] > 0.8) & (df_p['Clicks_Delta'] < 0)].sort_values(by='Impressions', ascending=False).head(10)
                 if not bad_pages.empty:
                     for i, r in bad_pages.reset_index().iterrows():
                         st.markdown(f"**{i+1}.** `{r['Pages']}` (Rank: **{round(r['Position'],1)}** | Loss: **{r['Clicks_Delta']} clicks**)")
                 else:
-                    st.success("No critical organic drop issues found across landing pages.")
+                    st.success("No critical page-level drops found.")
                     
             with d2:
                 st.markdown("""
                 <div class="risk-banner">
-                    <h4>🔗 Top Internal Linking Targets</h4>
-                    <p>These terms rank on page 2. Acquire context-relevant internal links to these pages to boost ranking to page 1.</p>
+                    <h4>🔗 Internal Link Targets</h4>
+                    <p>These terms rank on page 2. Send internally pointing links to these URLs to boost rankings up to Page 1.</p>
                 </div>
                 """, unsafe_allow_html=True)
-                st.markdown("<br/>", unsafe_allow_html=True)
                 
                 target_kws = df_q[(df_q['Position'] >= 11) & (df_q['Position'] <= 20)].sort_values(by='Impressions', ascending=False).head(10)
                 if not target_kws.empty:
                     for i, r in target_kws.reset_index().iterrows():
                         st.markdown(f"**{i+1}.** `{r['Queries']}` (Current Position: **{round(r['Position'],1)}** | Impressions: **{int(r['Impressions'])}**)")
                 else:
-                    st.success("All primary keywords have high positions on page 1.")
+                    st.success("All target keywords rank cleanly on page 1.")
 
     else:
-        st.error("❌ The uploaded ZIP file does not contain valid 'queries.csv' and 'pages.csv' datasets.")
+        st.error("❌ The uploaded ZIP file does not contain compatible 'queries.csv' and 'pages.csv' datasets.")
