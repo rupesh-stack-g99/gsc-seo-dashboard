@@ -110,13 +110,14 @@ st.markdown("""
         color: #38bdf8 !important;
     }
 
-    /* Clean CSS lists instead of ugly raw grids */
-    .data-list {
+    .url-helper-box {
         background-color: #1e293b;
-        border: 1px solid #334155;
-        border-radius: 8px;
-        padding: 15px 20px;
-        margin-bottom: 15px;
+        border: 1px dashed #475569;
+        border-radius: 6px;
+        padding: 12px;
+        margin-top: 8px;
+        font-size: 0.85rem;
+        color: #94a3b8;
     }
     
     /* Explicit color for standard Streamlit text elements */
@@ -140,7 +141,7 @@ st.markdown("""
 st.markdown("""
 <div class="hero-banner">
     <h1>🕵️ Algorithmic SEO Detective</h1>
-    <p>This engine analyzes your Search Console data in real-time, strips out raw tables entirely, and renders strict algorithmic diagnostics inside structured investigation tabs.</p>
+    <p>This engine analyzes your Search Console data, matches keywords to their most likely ranking URLs, and serves actionable SEO directives inside clean investigation tabs.</p>
 </div>
 """, unsafe_allow_html=True)
 
@@ -164,7 +165,7 @@ CTR_BENCHMARKS = {
     1: 30.0, 2: 15.0, 3: 10.0, 4: 7.0, 5: 5.0,
     6: 4.0,  7: 3.0,  8: 2.5,  9: 2.0,  10: 1.5
 }
-for pos in range(11, 101):  # Expanded CTR benchmark references deeper into organic SERPs
+for pos in range(11, 101):
     CTR_BENCHMARKS[pos] = round(15.0 / pos, 2)
 
 # =========================================================================
@@ -246,8 +247,34 @@ def parse_gsc_sheet(df, dim_name):
         
     normalized['Position'], normalized['Position_Delta'] = extract_stats(['position'], default_val=99.0)
     
-    # --- 30% POSITION LIMIT FILTER COMPLETELY REMOVED ---
     return normalized
+
+def find_best_url_match(query_row, df_pages, max_offset=6.0):
+    """
+    Algorithmic matching engine: correlates a query to its most likely landing page
+    by looking for pages that share similar ranking and volume profiles.
+    """
+    q_pos = query_row['Position']
+    q_clicks = query_row['Clicks']
+    
+    # Filter pages operating at a similar rank
+    candidates = df_pages[
+        (df_pages['Position'] >= q_pos - max_offset) & 
+        (df_pages['Position'] <= q_pos + max_offset)
+    ]
+    
+    if candidates.empty:
+        # Fallback to general top pages
+        candidates = df_pages
+        
+    # Pick candidate page with closest click volume or rank proximity
+    candidates = candidates.copy()
+    candidates['proximity'] = (candidates['Position'] - q_pos).abs()
+    candidates = candidates.sort_values(by=['proximity', 'Clicks'], ascending=[True, False])
+    
+    if not candidates.empty:
+        return candidates.iloc[0]['Pages']
+    return "Could not auto-resolve URL"
 
 def extract_gsc_payload(uploaded_zip):
     results = {}
@@ -361,16 +388,23 @@ if uploaded_file is not None:
                 (df_q['Clicks_Delta'] < 0) & 
                 (df_q['Impressions_Delta'] >= 0) & 
                 (df_q['Position_Delta'] <= 0.2)
-            ].sort_values(by='Clicks_Delta', ascending=True).head(25) # Expanded head limit for deeper position tracking
+            ].sort_values(by='Clicks_Delta', ascending=True).head(15)
 
             if not decay_queries.empty:
                 for idx, r in decay_queries.reset_index().iterrows():
+                    mapped_url = find_best_url_match(r, df_p)
                     st.markdown(f"""
                     *   🔴 **Keyword:** `{r['Queries']}`  
                         *   **Current Rank:** {round(r['Position'], 1)} (Trend: {round(r['Position_Delta'], 2)})  
                         *   **Click Shift:** **{int(r['Clicks_Delta'])} clicks**  
-                        *   *Directive:* Overhaul your meta titles and description snippets immediately. Competitors are out-clicking you on the SERP.
+                        *   🎯 **Best Match URL:** `{mapped_url}`
+                        *   *Directive:* Overhaul this URL's meta title and description immediately.
                     """)
+                st.markdown("""
+                <div class="url-helper-box">
+                    💡 <b>How to verify the exact URL in GSC:</b> Go to your Google Search Console performance report, click the <b>"Queries"</b> tab, click on your target keyword to filter by it, and then click the <b>"Pages"</b> tab.
+                </div>
+                """, unsafe_allow_html=True)
             else:
                 st.info("No active keyword decay flags detected.")
 
@@ -386,23 +420,31 @@ if uploaded_file is not None:
                 if row['CTR'] < (benchmark * 0.7):
                     projected_clicks = (row['Impressions'] * (benchmark / 100)) - row['Clicks']
                     if projected_clicks > 5:
+                        mapped_url = find_best_url_match(row, df_p)
                         ctr_gaps_table.append({
                             "Keyword": row['Queries'],
                             "Rank": round(row['Position'], 1),
                             "Actual CTR": f"{round(row['CTR'], 1)}%",
                             "Target CTR": f"{round(benchmark, 1)}%",
-                            "Click Loss": int(projected_clicks)
+                            "Click Loss": int(projected_clicks),
+                            "URL": mapped_url
                         })
             
             if ctr_gaps_table:
-                sorted_gaps = sorted(ctr_gaps_table, key=lambda x: x['Click Loss'], reverse=True)[:25]
+                sorted_gaps = sorted(ctr_gaps_table, key=lambda x: x['Click Loss'], reverse=True)[:15]
                 for idx, item in enumerate(sorted_gaps):
                     st.markdown(f"""
                     *   🎯 **Keyword:** `{item['Keyword']}` (Rank: **{item['Rank']}**)  
                         *   **Your CTR:** {item['Actual CTR']} *(Expected Benchmark: {item['Target CTR']})*  
                         *   **Estimated Loss:** **-{item['Click Loss']} Clicks**  
-                        *   *Directive:* Analyze competitor headers. Ensure your landing page cleanly targets the exact search intent.
+                        *   🔗 **Target URL:** `{item['URL']}`
+                        *   *Directive:* Analyze competitor headers vs your metadata. Adjust the title/meta description on this URL.
                     """)
+                st.markdown("""
+                <div class="url-helper-box">
+                    💡 <b>How to verify the exact URL in GSC:</b> Go to your Google Search Console performance report, click the <b>"Queries"</b> tab, click on your target keyword to filter by it, and then click the <b>"Pages"</b> tab.
+                </div>
+                """, unsafe_allow_html=True)
             else:
                 st.info("Your Page 1 CTR profiles are healthy and meeting benchmarks.")
 
@@ -463,11 +505,18 @@ if uploaded_file is not None:
 
             if not striking_kws.empty:
                 for idx, r in striking_kws.reset_index().iterrows():
+                    mapped_url = find_best_url_match(r, df_p)
                     st.markdown(f"""
                     *   🚀 **Keyword:** `{r['Queries']}`  
                         *   **Current Rank:** {round(r['Position'], 1)} | **Impressions:** {int(r['Impressions'])}  
-                        *   *Directive:* Locate 2-3 of your highest-authority articles and add an internal link pointing to the landing page ranking for this keyword using optimized anchor text.
+                        *   🔗 **Target Landing Page URL:** `{mapped_url}`  
+                        *   *Directive:* Locate 2-3 of your highest-authority articles and add an internal link pointing to this landing page URL using optimized anchor text.
                     """)
+                st.markdown("""
+                <div class="url-helper-box">
+                    💡 <b>How to verify the exact URL in GSC:</b> Go to your Google Search Console performance report, click the <b>"Queries"</b> tab, click on your target keyword to filter by it, and then click the <b>"Pages"</b> tab.
+                </div>
+                """, unsafe_allow_html=True)
             else:
                 st.info("No queries currently idling on Page 2 striking distance.")
 
