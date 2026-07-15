@@ -5,94 +5,57 @@ import io
 import zipfile
 
 # =========================================================================
-# PAGE CONFIGURATION & LAYOUT
+# CONFIGURATION & CSS
 # =========================================================================
 st.set_page_config(
-    page_title="SEO Damage Control & Fix Engine",
-    page_icon="🚨",
+    page_title="SEO Deficit Engine",
+    page_icon="⚠️",
     layout="wide"
 )
 
-# Dark, ultra-clean "Fix-First" Dashboard UI styling
 st.markdown("""
     <style>
-    .stApp {
-        background-color: #fafafa;
-    }
-    h1, h2, h3 {
-        color: #0f172a !important;
-        font-family: 'Inter', sans-serif;
-    }
-    .fix-banner {
-        background: linear-gradient(135deg, #7f1d1d 0%, #450a0a 100%);
-        color: #fef2f2;
-        padding: 30px;
-        border-radius: 12px;
-        margin-bottom: 30px;
-        box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1);
-    }
-    .fix-banner h2 {
-        color: #ffffff !important;
-        margin-top: 0;
-    }
-    .fix-banner p {
-        color: #fca5a5;
-        margin-bottom: 0;
-        font-size: 1.05rem;
-    }
-    .error-card {
-        background: #ffffff;
-        border: 1px solid #fee2e2;
-        border-left: 5px solid #ef4444;
+    /* Slate Minimalist Styling */
+    .stApp { background-color: #fafafa; }
+    h1, h2, h3, h4 { color: #0f172a !important; font-family: monospace; }
+    
+    /* Status Headers */
+    .alert-banner {
+        background-color: #0f172a;
+        color: #ffffff;
+        padding: 24px;
         border-radius: 8px;
-        padding: 20px;
-        margin-bottom: 16px;
-        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+        font-family: monospace;
+        margin-bottom: 25px;
+        border-left: 6px solid #ef4444;
     }
-    .warning-card {
-        background: #ffffff;
-        border: 1px solid #fef3c7;
-        border-left: 5px solid #f59e0b;
-        border-radius: 8px;
-        padding: 20px;
-        margin-bottom: 16px;
-        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
-    }
-    .code-box {
-        background-color: #f8fafc;
+    .alert-banner h2 { color: #ffffff !important; margin: 0 0 8px 0; }
+    .alert-banner p { color: #94a3b8; margin: 0; font-size: 0.95rem; }
+    
+    /* Metrics panel */
+    .metric-panel {
+        background-color: #ffffff;
         border: 1px solid #e2e8f0;
-        padding: 8px 12px;
         border-radius: 6px;
-        font-family: 'Courier New', Courier, monospace;
-        font-size: 0.85rem;
-        color: #334155;
-        word-break: break-all;
-        margin: 6px 0 12px 0;
+        padding: 16px;
+        text-align: center;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.05);
     }
-    .fix-badge {
-        font-size: 0.75rem;
-        font-weight: 700;
-        text-transform: uppercase;
-        padding: 3px 8px;
-        border-radius: 4px;
-        display: inline-block;
-        margin-bottom: 8px;
-    }
-    .badge-red { background-color: #fee2e2; color: #991b1b; }
-    .badge-orange { background-color: #fef3c7; color: #92400e; }
+    .metric-val { font-size: 1.8rem; font-weight: 700; color: #ef4444; font-family: monospace; }
+    .metric-lbl { font-size: 0.8rem; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em; margin-top: 4px; }
     </style>
 """, unsafe_allow_html=True)
 
-st.title("🚨 SEO Damage Control & Leak Fixer")
-st.write("Upload your GSC ZIP package. The engine will skip the vanity metrics and pull only the leaks, drops, errors, and optimization deficits.")
+st.title("🚨 SEO Deficit & Defect Engine")
+st.write("Upload your standard GSC raw ZIP export. The engine automatically filters, calculates, and generates clean action files of your underperforming data.")
 
 # =========================================================================
-# SIDEBAR CONTROLS
+# SYSTEM FILTERS
 # =========================================================================
-st.sidebar.header("⚙️ Filter Rules")
-BRAND_KEYWORD = st.sidebar.text_input("Exclude Branded Searches", value="botoxie").lower().strip()
-MIN_IMPRESSIONS = st.sidebar.number_input("Minimum Impressions Threshold", min_value=1, value=100)
-MAX_CANNIBAL_GAP = st.sidebar.slider("Cannibalization Proximity (Positions)", 1, 20, 10)
+st.sidebar.header("🔧 Deficit Parameters")
+BRAND_KEYWORD = st.sidebar.text_input("Brand Filter (Exclude)", value="botoxie").lower().strip()
+MIN_IMPRESSIONS = st.sidebar.number_input("Minimum Impressions", min_value=1, value=100)
+MAX_CANNIBAL_GAP = st.sidebar.slider("Overlap Rank Proximity", 1, 20, 10)
 
 CTR_BENCHMARKS = {
     1: 30.0, 2: 15.0, 3: 10.0, 4: 7.0, 5: 5.0,
@@ -100,9 +63,9 @@ CTR_BENCHMARKS = {
 }
 
 # =========================================================================
-# HELPER: NORMALIZE METRICS
+# UTILITIES: DATA PARSING
 # =========================================================================
-def normalize_gsc_df(df, dimension_name):
+def parse_and_normalize(df, dimension_name):
     df.columns = [col.strip() for col in df.columns]
     target_col = next((col for col in df.columns if col.lower() in [dimension_name.lower(), 'query', 'page', 'device', 'country', 'search appearance', 'top ' + dimension_name.lower()]), None)
     if not target_col:
@@ -135,57 +98,63 @@ def normalize_gsc_df(df, dimension_name):
     
     return normalized
 
-# =========================================================================
-# GSC ZIP UNPACKER
-# =========================================================================
 @st.cache_data
-def unpack_and_analyze_zip(uploaded_file):
+def process_gsc_zip(uploaded_file):
     extracted_dfs = {}
     try:
         with zipfile.ZipFile(uploaded_file) as z:
             file_list = z.namelist()
             file_targets = {
                 'Queries': next((f for f in file_list if "queries.csv" in f.lower()), None),
-                'Pages': next((f for f in file_list if "pages.csv" in f.lower()), None),
-                'Devices': next((f for f in file_list if "devices.csv" in f.lower()), None)
+                'Pages': next((f for f in file_list if "pages.csv" in f.lower()), None)
             }
             for key, filename in file_targets.items():
                 if filename:
                     with z.open(filename) as f:
                         df = pd.read_csv(f)
-                        normalized = normalize_gsc_df(df, key)
+                        normalized = parse_and_normalize(df, key)
                         if normalized is not None:
                             extracted_dfs[key] = normalized
         return extracted_dfs
     except Exception as e:
-        st.error(f"Error reading GSC Archive: {e}")
+        st.error(f"ZIP Unpacking Error: {e}")
         return None
 
-# =========================================================================
-# ANALYSIS AND RENDERING
-# =========================================================================
-uploaded_file = st.file_uploader("Upload GSC ZIP Export:", type=["zip"])
+def convert_to_csv(df):
+    return df.to_csv(index=False).encode('utf-8')
 
-if uploaded_file is None:
-    st.info("📂 Drop your exported Search Console ZIP here. We will instantly map every leaking or underperforming keyword & URL relationship.")
-else:
-    with st.spinner("Compiling negative SEO signals..."):
-        gsc_data = unpack_and_analyze_zip(uploaded_file)
+# =========================================================================
+# APP EXECUTION & PIPELINES
+# =========================================================================
+uploaded_file = st.file_uploader("Drop GSC Export Zip here to run diagnostics:", type=["zip"])
+
+if uploaded_file is not None:
+    with st.spinner("Extracting parameters and running database joins..."):
+        gsc_data = process_gsc_zip(uploaded_file)
         
     if gsc_data and 'Queries' in gsc_data and 'Pages' in gsc_data:
         df_queries = gsc_data['Queries']
         df_pages = gsc_data['Pages']
         
+        # Apply brand filters
         if BRAND_KEYWORD:
             df_queries = df_queries[~df_queries['Queries'].str.lower().str.contains(BRAND_KEYWORD, na=False)]
             
-        # 1. TRAFFIC BLEEDERS (Greatest Click Drop)
-        traffic_bleeders = df_queries[df_queries['Clicks_Delta'] < 0].sort_values(by='Clicks_Delta', ascending=True).head(10)
-        
-        # 2. CANNIBALIZATION MAP
+        # ---------------------------------------------------------------------
+        # 1. OUTCOME DATASET: TRAFFIC LOSSES (Bleeders)
+        # ---------------------------------------------------------------------
+        df_bleed = df_queries[df_queries['Clicks_Delta'] < 0].sort_values(by='Clicks_Delta', ascending=True).copy()
+        df_bleed['Clicks_Lost'] = df_bleed['Clicks_Delta'].abs().astype(int)
+        df_bleed_clean = df_bleed[['Queries', 'Clicks', 'Clicks_Lost', 'Impressions', 'CTR', 'Position', 'Position_Delta']].copy()
+        df_bleed_clean.columns = ['Query', 'Current Clicks', 'Clicks Lost vs Last Period', 'Impressions', 'CTR %', 'Current Rank', 'Rank Change']
+        df_bleed_clean.index = np.arange(1, len(df_bleed_clean) + 1)
+
+        # ---------------------------------------------------------------------
+        # 2. OUTCOME DATASET: KEYWORD CLASHES (Cannibalization Mapping)
+        # ---------------------------------------------------------------------
         cannibal_list = []
         queries_sorted = df_queries[df_queries['Impressions'] >= MIN_IMPRESSIONS].sort_values(by='Impressions', ascending=False)
-        for idx, q_row in queries_sorted.head(100).iterrows():
+        for idx, q_row in queries_sorted.head(200).iterrows():
             query_txt = q_row['Queries']
             q_pos = q_row['Position']
             
@@ -198,24 +167,33 @@ else:
             if len(matching_urls) > 1:
                 primary_url = matching_urls.iloc[0]['Pages']
                 primary_pos = round(matching_urls.iloc[0]['Position'], 1)
+                primary_clicks = int(matching_urls.iloc[0]['Clicks'])
                 
                 for sub_idx in range(1, min(len(matching_urls), 3)):
                     sub_row = matching_urls.iloc[sub_idx]
                     cannibal_url = sub_row['Pages']
                     cannibal_pos = round(sub_row['Position'], 1)
+                    cannibal_clicks = int(sub_row['Clicks'])
                     
                     if cannibal_url != primary_url:
                         cannibal_list.append({
-                            "Query": query_txt,
-                            "Primary Page (Keep)": primary_url,
-                            "Primary Pos": primary_pos,
-                            "Cannibal Page (Fix)": cannibal_url,
-                            "Cannibal Pos": cannibal_pos
+                            "Conflicting Query": query_txt,
+                            "Primary Authority URL (KEEP)": primary_url,
+                            "Primary Authority Rank": primary_pos,
+                            "Primary Clicks": primary_clicks,
+                            "Cannibal Competing URL (FIX)": cannibal_url,
+                            "Cannibal Rank": cannibal_pos,
+                            "Cannibal Clicks": cannibal_clicks,
+                            "Rank Gap Offset": abs(primary_pos - cannibal_pos)
                         })
-        df_cannibal = pd.DataFrame(cannibal_list).drop_duplicates(subset=['Query', 'Cannibal Page (Fix)']) if cannibal_list else pd.DataFrame()
-        
-        # 3. UNDERPERFORMING CTR (Page 1 Underachievers)
-        ctr_leaks = []
+        df_clashes = pd.DataFrame(cannibal_list).drop_duplicates(subset=['Conflicting Query', 'Cannibal Competing URL (FIX)']) if cannibal_list else pd.DataFrame()
+        if not df_clashes.empty:
+            df_clashes.index = np.arange(1, len(df_clashes) + 1)
+
+        # ---------------------------------------------------------------------
+        # 3. OUTCOME DATASET: CLICK DEFICITS (Page 1 Underperforming CTR)
+        # ---------------------------------------------------------------------
+        ctr_gaps = []
         page1_queries = df_queries[(df_queries['Position'] <= 10) & (df_queries['Impressions'] >= MIN_IMPRESSIONS)]
         for _, row in page1_queries.iterrows():
             kw = row['Queries']
@@ -225,152 +203,102 @@ else:
             pos = round(row['Position'])
             
             benchmark = CTR_BENCHMARKS.get(pos, 2.0)
-            if actual_ctr < (benchmark * 0.7): # 30% below expected standard
-                ctr_leaks.append({
-                    "Keyword": kw,
-                    "Rank": pos,
-                    "Actual CTR": f"{round(actual_ctr, 1)}%",
-                    "Expected CTR": f"{benchmark}%",
-                    "Lost Clicks": int((impr * (benchmark / 100)) - clicks)
-                })
-        df_ctr_leaks = pd.DataFrame(ctr_leaks).sort_values(by='Lost Clicks', ascending=False) if ctr_leaks else pd.DataFrame()
+            if actual_ctr < (benchmark * 0.7):
+                lost_clicks = int((impr * (benchmark / 100)) - clicks)
+                if lost_clicks > 0:
+                    ctr_gaps.append({
+                        "Keyword": kw,
+                        "Rank": pos,
+                        "Actual CTR": f"{round(actual_ctr, 1)}%",
+                        "Expected Benchmark CTR": f"{benchmark}%",
+                        "Estimated Click Deficit": lost_clicks,
+                        "Total Impressions": int(impr)
+                    })
+        df_gaps = pd.DataFrame(ctr_gaps).sort_values(by='Estimated Click Deficit', ascending=False) if ctr_gaps else pd.DataFrame()
+        if not df_gaps.empty:
+            df_gaps.index = np.arange(1, len(df_gaps) + 1)
+
+        # ---------------------------------------------------------------------
+        # 4. OUTCOME DATASET: PAGE 2 LAGGARDS (Stuck in Positions 11-20)
+        # ---------------------------------------------------------------------
+        df_laggards = df_queries[
+            (df_queries['Position'] >= 11.0) & 
+            (df_queries['Position'] <= 20.0) & 
+            (df_queries['Impressions'] >= MIN_IMPRESSIONS)
+        ].sort_values(by='Impressions', ascending=False).copy()
+        
+        df_lag_clean = df_laggards[['Queries', 'Position', 'Impressions', 'Clicks', 'CTR']].copy()
+        df_lag_clean.columns = ['Keyword Near Page 1', 'Current Rank', 'Lost Impressions Opportunity', 'Current Clicks Received', 'CTR %']
+        df_lag_clean.index = np.arange(1, len(df_lag_clean) + 1)
 
         # =========================================================================
-        # RENDER ACTION BOARD
+        # EXECUTIVE BRIEFING PANEL
         # =========================================================================
-        st.markdown("""
-        <div class="fix-banner">
-            <h2>🚨 Organic Performance Deficit & Fix Roadmap</h2>
-            <p>Every item listed below represents missed traffic, ranking loss, or poor click efficiency. Fix these issues to recover your performance.</p>
+        st.markdown(f"""
+        <div class="alert-banner">
+            <h2>🚨 OUTCOME REPORT: PERFORMANCE LEAKS DISCOVERED</h2>
+            <p>Your raw GSC data has been processed. We bypassed the positive performance indicators and extracted only your organic issues.</p>
         </div>
         """, unsafe_allow_html=True)
         
-        col_left, col_right = st.columns([1, 1])
-        
-        with col_left:
-            st.subheader("🔴 Structural & Authority Leaks")
-            
-            # Show Cannibalization
-            st.write("#### 1. Keyword Cannibalization (Internal Page Fights)")
-            if not df_cannibal.empty:
-                for idx, row in df_cannibal.head(3).reset_index(drop=True).iterrows():
-                    st.markdown(f"""
-                    <div class="error-card">
-                        <span class="fix-badge badge-red">Cannibalization Deficit #{idx+1}</span>
-                        <h5 style="margin:0 0 4px 0;">Target Search: "{row['Query']}"</h5>
-                        <p style="margin: 4px 0; font-size: 0.85rem; font-weight: bold; color: #1e293b;">Primary Authority URL (Keep and strengthen):</p>
-                        <div class="code-box">{row['Primary Page (Keep)']} (Rank: {row['Primary Pos']})</div>
-                        <p style="margin: 4px 0; font-size: 0.85rem; font-weight: bold; color: #991b1b;">Conflicting URL (Diluting authority):</p>
-                        <div class="code-box">{row['Cannibal Page (Fix)']} (Rank: {row['Cannibal Pos']})</div>
-                        <p style="margin: 6px 0 0 0; font-size: 0.85rem; color: #475569; line-height: 1.4;">
-                            <b>Fix Action:</b> Open the Conflicting URL page and link exact-match anchor text ("{row['Query']}") directly to your Primary Authority URL. Consider trimming matching keyword variations from the title/H1 headers of the Conflicting page.
-                        </p>
-                    </div>
-                    """, unsafe_allow_html=True)
-            else:
-                st.success("No critical cannibalization trends found!")
-                
-            # Show CTR Underachievers
-            st.write("#### 2. Click Efficiency Deficits (Page-1 CTR Drops)")
-            if not df_ctr_leaks.empty:
-                for idx, row in df_ctr_leaks.head(3).reset_index(drop=True).iterrows():
-                    st.markdown(f"""
-                    <div class="warning-card">
-                        <span class="fix-badge badge-orange">CTR Optimization Needed #{idx+1}</span>
-                        <h5 style="margin:0 0 4px 0;">Keyword: "{row['Keyword']}"</h5>
-                        <p style="margin: 4px 0; font-size: 0.85rem; color: #475569;">
-                            Ranks at Position <b>{row['Rank']}</b>, but CTR is only <b>{row['Actual CTR']}</b> (vs. <b>{row['Expected CTR']}</b> benchmark). 
-                            You leaked <b>{row['Lost Clicks']} potential clicks</b> simply due to low-impact presentation.
-                        </p>
-                        <p style="margin: 6px 0 0 0; font-size: 0.85rem; font-weight: bold; color: #92400e; line-height: 1.4;">
-                            <b>Fix Action:</b> Rewrite the metadata for the page ranking for this query. Use brackets, clear action-oriented modifiers, or numbers in the meta title to capture search intent more effectively.
-                        </p>
-                    </div>
-                    """, unsafe_allow_html=True)
-            else:
-                st.success("All Page-1 rankings are winning healthy click volume!")
-                
-        with col_right:
-            st.subheader("📉 Traffic Loss & Visibility Deficits")
-            
-            # Show Dropping Keywords
-            st.write("#### 3. Traffic Bleeders (Largest Click Losses)")
-            if not traffic_bleeders.empty:
-                for idx, row in traffic_bleeders.head(4).reset_index(drop=True).iterrows():
-                    st.markdown(f"""
-                    <div class="error-card">
-                        <span class="fix-badge badge-red">Decline Signal #{idx+1}</span>
-                        <h5 style="margin:0 0 4px 0;">Keyword: "{row['Queries']}"</h5>
-                        <p style="margin: 4px 0; font-size: 0.85rem; color: #475569;">
-                            This keyword lost <b>{int(abs(row['Clicks_Delta']))} clicks</b> over the previous period. Current position: <b>{round(row['Position'], 1)}</b>.
-                        </p>
-                        <p style="margin: 6px 0 0 0; font-size: 0.85rem; font-weight: bold; color: #b91c1c; line-height: 1.4;">
-                            <b>Fix Action:</b> Check the historical ranking trend. If position has slipped, update the page with updated context, clear subheadings, and verify that the target content is still serving the core search intent.
-                        </p>
-                    </div>
-                    """, unsafe_allow_html=True)
-            else:
-                st.info("No negative click trend detected in your dataset.")
-                
-            # Show Device issues
-            st.write("#### 4. Mobile Layout Performance Gaps")
-            if 'Devices' in gsc_data:
-                df_dev = gsc_data['Devices']
-                mob_row = df_dev[df_dev['Devices'].str.lower() == 'mobile']
-                desk_row = df_dev[df_dev['Devices'].str.lower() == 'desktop']
-                
-                if not mob_row.empty and not desk_row.empty:
-                    m_ctr = mob_row.iloc[0]['CTR']
-                    d_ctr = desk_row.iloc[0]['CTR']
-                    
-                    if m_ctr < (d_ctr * 0.8):
-                        st.markdown(f"""
-                        <div class="error-card">
-                            <span class="fix-badge badge-red">Mobile Deficit Alert</span>
-                            <h5 style="margin:0 0 4px 0;">Mobile CTR Underperforming Desktop</h5>
-                            <p style="margin: 4px 0; font-size: 0.85rem; color: #475569;">
-                                Mobile CTR: <b>{round(m_ctr, 2)}%</b> | Desktop CTR: <b>{round(d_ctr, 2)}%</b>. 
-                                Mobile listings are under-converting desktop clicks by over 20%.
-                            </p>
-                            <p style="margin: 6px 0 0 0; font-size: 0.85rem; font-weight: bold; color: #b91c1c; line-height: 1.4;">
-                                <b>Fix Action:</b> Run mobile-friendliness or Core Web Vitals checks. Verify viewports, ensure button layout elements are not jumping (LCP/CLS issues), and confirm dynamic content displays properly on smaller screens.
-                            </p>
-                        </div>
-                        """, unsafe_allow_html=True)
-                    else:
-                        st.success("Mobile and desktop click ratios are healthy and closely aligned!")
-            else:
-                st.info("Upload `devices.csv` to diagnostic tools to check for cross-device visibility drops.")
+        # High-level Damage Metrics
+        c_left, c_mid1, c_mid2, c_right = st.columns(4)
+        with c_left:
+            st.markdown(f'<div class="metric-panel"><div class="metric-val">{len(df_bleed_clean)}</div><div class="metric-lbl">Bleeding Keywords</div></div>', unsafe_allow_html=True)
+        with c_mid1:
+            st.markdown(f'<div class="metric-panel"><div class="metric-val">{len(df_clashes)}</div><div class="metric-lbl">URL Ranking Fights</div></div>', unsafe_allow_html=True)
+        with c_mid2:
+            st.markdown(f'<div class="metric-panel"><div class="metric-val">{len(df_gaps)}</div><div class="metric-lbl">CTR Deficit Gaps</div></div>', unsafe_allow_html=True)
+        with c_right:
+            st.markdown(f'<div class="metric-panel"><div class="metric-val">{len(df_lag_clean)}</div><div class="metric-lbl">Page 2 Laggards</div></div>', unsafe_allow_html=True)
+
+        st.markdown("<br/>", unsafe_allow_html=True)
 
         # =========================================================================
-        # 1-INDEXED NEGATIVE DEEP DIVE TABLES
+        # DIRECT TABLES WITH IMMEDIATE CSV DOWNLOADS
         # =========================================================================
+        
+        # Section 1: Traffic Bleeders
+        st.subheader("📉 1. Traffic Bleeders (Largest Click Losses)")
+        st.write("These keywords lost the most traffic over the selected time range compared to the prior period.")
+        if not df_bleed_clean.empty:
+            st.dataframe(df_bleed_clean, use_container_width=True)
+            st.download_button("💾 Download Traffic Loss Data (CSV)", data=convert_to_csv(df_bleed_clean), file_name="gsc_traffic_losses.csv", mime="text/csv")
+        else:
+            st.info("No negative click trends detected.")
+
         st.markdown("---")
-        st.subheader("📊 Supplementary Deficit Tables (Negative Focus)")
-        
-        tab_bleeder, tab_c_raw, tab_ctr_raw = st.tabs([
-            "📉 Complete Traffic Bleeder List", 
-            "🎯 Detailed Cannibalization Overlaps", 
-            "📈 Complete CTR Deficit List"
-        ])
-        
-        with tab_bleeder:
-            if not traffic_bleeders.empty:
-                disp_bleed = traffic_bleeders[['Queries', 'Clicks', 'Impressions', 'CTR', 'Position', 'Clicks_Delta']].copy()
-                disp_bleed.index = np.arange(1, len(disp_bleed) + 1)
-                st.dataframe(disp_bleed, use_container_width=True)
-                
-        with tab_c_raw:
-            if not df_cannibal.empty:
-                disp_cannibal = df_cannibal.copy()
-                disp_cannibal.index = np.arange(1, len(disp_cannibal) + 1)
-                st.dataframe(disp_cannibal, use_container_width=True)
-                
-        with tab_ctr_raw:
-            if not df_ctr_leaks.empty:
-                disp_ctr = df_ctr_leaks.copy()
-                disp_ctr.index = np.arange(1, len(disp_ctr) + 1)
-                st.dataframe(disp_ctr, use_container_width=True)
-                
+
+        # Section 2: Keyword Clashes
+        st.subheader("🎯 2. Authority Clashes (Keyword Cannibalization Map)")
+        st.write("These conflicting URLs are competing with each other in Google's SERP indices for identical search terms.")
+        if not df_clashes.empty:
+            st.dataframe(df_clashes, use_container_width=True)
+            st.download_button("💾 Download Clash Data (CSV)", data=convert_to_csv(df_clashes), file_name="gsc_keyword_clashes.csv", mime="text/csv")
+        else:
+            st.info("No active URL cannibalization mapped.")
+
+        st.markdown("---")
+
+        # Section 3: CTR Underachievers
+        st.subheader("📈 3. Click Efficiency Gaps (Underperforming Page-1 CTR)")
+        st.write("These keywords rank on Page 1 but perform below search-layout standards. Their Meta titles require immediate optimization.")
+        if not df_gaps.empty:
+            st.dataframe(df_gaps, use_container_width=True)
+            st.download_button("💾 Download CTR Deficit Data (CSV)", data=convert_to_csv(df_gaps), file_name="gsc_ctr_deficits.csv", mime="text/csv")
+        else:
+            st.info("No structural CTR issues found on Page 1.")
+
+        st.markdown("---")
+
+        # Section 4: Page 2 Opportunities
+        st.subheader("🚀 4. Page 2 Laggards (Keywords Stuck in Positions 11–20)")
+        st.write("These keywords are trapped on Page 2 with massive impression scale, leaving traffic on the table.")
+        if not df_lag_clean.empty:
+            st.dataframe(df_lag_clean, use_container_width=True)
+            st.download_button("💾 Download Page-2 Laggards (CSV)", data=convert_to_csv(df_lag_clean), file_name="gsc_page2_laggards.csv", mime="text/csv")
+        else:
+            st.info("No high-impression Page-2 opportunities detected.")
+
     else:
-        st.error("❌ Invalid GSC ZIP Format. Please upload a direct, unmodified ZIP archive from Google Search Console.")
+        st.error("❌ The uploaded GSC ZIP does not contain clean 'queries.csv' or 'pages.csv' data sets.")
