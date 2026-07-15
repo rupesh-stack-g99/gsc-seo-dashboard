@@ -142,7 +142,7 @@ st.markdown("""
 st.markdown("""
 <div class="hero-banner">
     <h1>🕵️ Algorithmic SEO Detective</h1>
-    <p>This engine analyzes your Search Console data, matches keywords to their most likely landing pages using lexical mapping, and serves actionable SEO directives inside clean investigation tabs.</p>
+    <p>This engine analyzes your Search Console data, matches keywords to actual web landing pages (filtering out images and attachments), and highlights traffic gaps against industry benchmarks.</p>
 </div>
 """, unsafe_allow_html=True)
 
@@ -209,7 +209,11 @@ def parse_gsc_sheet(df, dim_name):
     normalized[dim_name] = df[target_col].astype(str).str.strip()
     
     if dim_name == 'Pages':
+        # Remove UTM parameters
         normalized = normalized[~normalized['Pages'].str.lower().str.contains('utm_|_utm|utm=', na=False)]
+        # CRITICAL FILTER: Remove static assets like images, pdfs, css, js
+        asset_pattern = r'\.(jpg|jpeg|png|gif|webp|svg|pdf|css|js|txt|xml|mp4)$'
+        normalized = normalized[~normalized['Pages'].str.lower().str.contains(asset_pattern, na=False)]
         
     def extract_stats(keywords, default_val=0.0):
         col = next((c for c in df.columns if any(k in c.lower() for k in keywords) 
@@ -270,7 +274,6 @@ def find_best_url_match(query_row, df_pages, max_offset=6.0):
     ].copy()
     
     if candidates.empty:
-        # Fallback to broader rank limit if matching pool is clean empty
         candidates = df_pages[
             (df_pages['Position'] >= q_pos - 15.0) & 
             (df_pages['Position'] <= q_pos + 15.0)
@@ -288,11 +291,10 @@ def find_best_url_match(query_row, df_pages, max_offset=6.0):
         # Calculate how many query tokens exist inside the URL string
         match_count = sum(1 for token in query_tokens if token in url_path)
         
-        # Give higher priority to exact matches of specialized topic keywords
         score = match_count
         
-        # Tie-breaker: prefer URLs with closer positions & higher clicks if text overlaps are tied
-        position_penalty = abs(p_row['Position'] - q_pos) * 0.05
+        # Tie-breaker penalty for position gap
+        position_penalty = abs(p_row['Position'] - q_pos) * 0.1
         score -= position_penalty
         
         if score > best_score:
@@ -461,7 +463,7 @@ if uploaded_file is not None:
                     st.markdown(f"""
                     *   🎯 **Keyword:** `{item['Keyword']}` (Rank: **{item['Rank']}**)  
                         *   **Your CTR:** {item['Actual CTR']} *(Expected Benchmark: {item['Target CTR']})*  
-                        *   **Estimated Loss:** **-{item['Click Loss']} Clicks**  
+                        *   📉 **Estimated Loss:** **-{item['Click Loss']} Clicks** *(Difference between actual clicks and expected industry baseline clicks at Rank {item['Rank']})*
                         *   🔗 **Target URL:** `{item['URL']}`
                         *   *Directive:* Analyze competitor headers vs your metadata. Adjust the title/meta description on this URL.
                     """)
