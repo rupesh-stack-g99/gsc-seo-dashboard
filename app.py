@@ -54,79 +54,19 @@ Only conflicts where the **Primary Page** and the **Cannibal Page** rank within 
 """)
 
 # =========================================================================
-# FILE UPLOAD CONSOLE (Accepts both CSV and ZIP)
+# DETECTOR & PARSING ENGINE
 # =========================================================================
-st.subheader("📂 Import Search Console Datasets")
-st.write("Upload either a `.csv` performance file or the direct `.zip` exported from Google Search Console.")
-
-uploaded_file = st.file_uploader("Upload GSC Export (CSV or ZIP)", type=["csv", "zip"])
-
-# =========================================================================
-# ZIP & CSV DETECTOR ENGINE
-# =========================================================================
-def extract_gsc_data_from_file(uploaded_file):
-    """
-    Parses both standalone CSVs and GSC ZIP files. 
-    If a ZIP is uploaded, it locates and merges 'Queries.csv' and 'Pages.csv'.
-    """
-    filename = uploaded_file.name.lower()
-    
-    # --- Case 1: ZIP File ---
-    if filename.endswith(".zip"):
-        try:
-            with zipfile.ZipFile(uploaded_file) as z:
-                file_list = z.namelist()
-                
-                # Search Console Standard ZIPs contain specific files:
-                queries_file = next((f for f in file_list if "queries.csv" in f.lower()), None)
-                pages_file = next((f for f in file_list if "pages.csv" in f.lower()), None)
-                
-                if not queries_file:
-                    st.error("❌ Invalid GSC ZIP: Could not find 'Queries.csv' inside the folder.")
-                    return None, False
-                
-                # Load the core Search Query Data
-                with z.open(queries_file) as f:
-                    queries_df = pd.read_csv(f)
-                
-                # If Pages.csv is present, we try to cross-reference it
-                if pages_file:
-                    with z.open(pages_file) as f:
-                        pages_df = pd.read_csv(f)
-                    st.toast("Unpacked Queries & Pages data from GSC ZIP archive!")
-                
-                return standardize_df_columns(queries_df)
-                
-        except Exception as e:
-            st.error(f"Failed to unpack ZIP file: {e}")
-            return None, False
-            
-    # --- Case 2: Standalone CSV ---
-    elif filename.endswith(".csv"):
-        df = pd.read_csv(uploaded_file)
-        return standardize_df_columns(df)
-        
-    return None, False
-
 def standardize_df_columns(df):
     """
     Standardizes variable naming across standard and comparison schemas.
     """
     df.columns = [col.strip() for col in df.columns]
     
-    page_col = next((col for col in df.columns if col.lower() in ['page', 'landing page', 'urls', 'pages']), None)
+    page_col = next((col for col in df.columns if col.lower() in ['page', 'landing page', 'urls', 'pages', 'url']), None)
     query_col = next((col for col in df.columns if col.lower() in ['query', 'keyword', 'search term', 'queries']), None)
     
     if not page_col or not query_col:
-        # Standard GSC queries export doesn't link queries and pages in a single file sometimes.
-        # Ensure we fall back gracefully or combine them.
-        if query_col and not page_col:
-            # If they uploaded only a query-level report, we assign a placeholder or show warning
-            df['Page'] = "N/A (Query-level export)"
-            page_col = 'Page'
-        else:
-            st.error("❌ Missing primary columns: Make sure your dataset contains 'Query' and 'Page' columns.")
-            return None, False
+        return None, False
 
     is_comparison = any('difference' in col.lower() or 'last' in col.lower() or 'compare' in col.lower() for col in df.columns)
     
@@ -169,6 +109,74 @@ def standardize_df_columns(df):
         
     return standardized_df, is_comparison
 
+
+def extract_gsc_data_from_file(uploaded_file):
+    """
+    Parses both standalone CSVs and GSC ZIP files. 
+    Detects if files within ZIP are unlinked CSV structures.
+    """
+    filename = uploaded_file.name.lower()
+    
+    # --- Case 1: ZIP File ---
+    if filename.endswith(".zip"):
+        try:
+            with zipfile.ZipFile(uploaded_file) as z:
+                file_list = z.namelist()
+                
+                # Check for combined table files where Queries and Pages are linked
+                search_results_file = next((f for f in file_list if "search_results.csv" in f.lower() or "search results.csv" in f.lower()), None)
+                
+                if search_results_file:
+                    with z.open(search_results_file) as f:
+                        df = pd.read_csv(f)
+                    return standardize_df_columns(df)
+                
+                # If we only have isolated GSC files (Queries.csv and Pages.csv separately)
+                queries_file = next((f for f in file_list if "queries.csv" in f.lower()), None)
+                pages_file = next((f for f in file_list if "pages.csv" in f.lower()), None)
+                
+                if queries_file and pages_file:
+                    st.error("""
+                    ### ⚠️ Unlinked ZIP Structure Detected
+                    You uploaded a default Google Search Console ZIP export.
+                    * GSC's native `Queries.csv` contains **only queries** without URLs.
+                    * GSC's native `Pages.csv` contains **only URLs** without keywords.
+                    
+                    They cannot be combined automatically because they don't share mapping keys.
+                    
+                    **How to fix this:**
+                    1. Use a free Google Sheets extension like **Search Analytics for Sheets**.
+                    2. Fetch your data with dimensions grouped by both **Query** and **Page** at the same time.
+                    3. Download that Sheet as a `.csv` file and upload it here!
+                    """)
+                    return None
+                
+                st.error("❌ Invalid ZIP Archive: No compatible Search Console CSV files found.")
+                return None
+                
+        except Exception as e:
+            st.error(f"Failed to unpack ZIP file: {e}")
+            return None
+            
+    # --- Case 2: Standalone CSV ---
+    elif filename.endswith(".csv"):
+        df = pd.read_csv(uploaded_file)
+        result = standardize_df_columns(df)
+        if result[0] is None:
+            st.error("❌ Missing primary columns: Make sure your dataset contains 'Query' and 'Page' columns mapped together.")
+            return None
+        return result
+        
+    return None
+
+# =========================================================================
+# FILE UPLOAD CONSOLE
+# =========================================================================
+st.subheader("📂 Import Search Console Datasets")
+st.write("Upload either a `.csv` query-page map file or the direct `.zip` exported from Google Search Console.")
+
+uploaded_file = st.file_uploader("Upload GSC Export (CSV or ZIP)", type=["csv", "zip"])
+
 # =========================================================================
 # PIPELINE EXECUTION
 # =========================================================================
@@ -179,10 +187,6 @@ if uploaded_file is not None:
         clean_df, is_compare = extracted_data
         
         if clean_df is not None:
-            # Warn user if pages were not linked (happens in query-only exports)
-            if (clean_df['Page'] == "N/A (Query-level export)").all():
-                st.warning("⚠️ The uploaded file/ZIP contains query metrics but does not assign queries to landing pages. For full cannibalization maps, export GSC data utilizing the 'Page' dimension grouped with 'Queries'.")
-            
             st.success(f"⚡ File parsed! Loaded {'GSC Period Comparison' if is_compare else 'Standard GSC Performance'} dataset.")
             
             # --- 1. FILTER BRAND & BOUNDARIES ---
@@ -190,7 +194,7 @@ if uploaded_file is not None:
                 clean_df = clean_df[~clean_df['Query'].str.lower().str.contains(BRAND_KEYWORD, na=False)]
             clean_df = clean_df[clean_df['Position'] <= MAX_POSITION_LIMIT]
             
-            # --- 2. AGGREGATE DUPLICATES (Url strip roll-up) ---
+            # --- 2. AGGREGATE DUPLICATES (URL roll-up) ---
             rolled_df = clean_df.groupby(['Query', 'Page']).agg({
                 'Clicks': 'sum',
                 'Impressions': 'sum',
