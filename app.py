@@ -160,25 +160,28 @@ def clean_gsc_csv(bytes_data):
     header_idx = 0
     for idx, line in enumerate(lines[:15]):  # Google usually puts headers in first 10 rows
         lower_line = line.lower()
-        if 'query' in lower_line or 'top queries' in lower_line or 'page' in lower_line or 'top pages' in lower_line:
+        # Look for typical CSV header identifiers
+        if any(term in lower_line for term in ['query', 'queries', 'page', 'pages', 'clicks', 'impressions']):
             header_idx = idx
             break
             
     # Read CSV skipping metadata headers
     try:
         df = pd.read_csv(io.StringIO("\n".join(lines[header_idx:])))
+        # Strip string whitespace from column headers
+        df.columns = [str(c).strip() for c in df.columns]
         return df
     except Exception:
         return None
 
 def parse_gsc_sheet(df, dim_name):
-    df.columns = [c.strip() for c in df.columns]
-    
-    # Track target column
-    target_col = next((c for c in df.columns if c.lower() in [
-        dim_name.lower(), 'query', 'queries', 'page', 'pages', 'device', 'country', 'top query', 'top page'
-    ]), None)
-    
+    # Match the target dimension column dynamically
+    target_col = None
+    if dim_name == 'Queries':
+        target_col = next((c for c in df.columns if c.lower() in ['query', 'queries', 'top queries', 'top query', 'search query']), None)
+    elif dim_name == 'Pages':
+        target_col = next((c for c in df.columns if c.lower() in ['page', 'pages', 'top pages', 'top page', 'landing page', 'url']), None)
+        
     if not target_col:
         return None
         
@@ -235,29 +238,34 @@ def extract_gsc_payload(uploaded_zip):
         with zipfile.ZipFile(uploaded_zip) as z:
             file_names = z.namelist()
             
-            # Map queries and pages using case-insensitive search
-            queries_file = next((n for n in file_names if 'queries.csv' in n.lower() or 'query.csv' in n.lower()), None)
-            pages_file = next((n for n in file_names if 'pages.csv' in n.lower() or 'page.csv' in n.lower()), None)
-            
-            if queries_file:
-                with z.open(queries_file) as f:
+            for file_name in file_names:
+                # Ignore system metadata files inside ZIPs (like macOS __MACOSX)
+                if '__macosx' in file_name.lower() or not file_name.endswith('.csv'):
+                    continue
+                    
+                with z.open(file_name) as f:
                     raw_df = clean_gsc_csv(f.read())
-                    if raw_df is not None:
+                    if raw_df is None or raw_df.empty:
+                        continue
+                    
+                    # Inspect column signatures of the CSV to classify the dataset
+                    cols_lower = [str(c).lower() for c in raw_df.columns]
+                    
+                    # Match Queries Dataset
+                    if any(q_term in cols_lower for q_term in ['query', 'queries', 'top queries', 'top query', 'search query']):
                         clean_df = parse_gsc_sheet(raw_df, 'Queries')
-                        if clean_df is not None:
+                        if clean_df is not None and not clean_df.empty:
                             results['Queries'] = clean_df
-            
-            if pages_file:
-                with z.open(pages_file) as f:
-                    raw_df = clean_gsc_csv(f.read())
-                    if raw_df is not None:
+                            
+                    # Match Pages Dataset
+                    elif any(p_term in cols_lower for p_term in ['page', 'pages', 'top pages', 'top page', 'landing page', 'url']):
                         clean_df = parse_gsc_sheet(raw_df, 'Pages')
-                        if clean_df is not None:
+                        if clean_df is not None and not clean_df.empty:
                             results['Pages'] = clean_df
                             
             return results
     except Exception as e:
-        st.error(f"Error reading ZIP: {str(e)}")
+        st.error(f"Error reading ZIP structure: {str(e)}")
         return None
 
 # =========================================================================
