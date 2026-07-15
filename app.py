@@ -13,7 +13,7 @@ st.set_page_config(
     layout="wide"
 )
 
-# Custom CSS for polished interface
+# Custom Styling
 st.markdown("""
     <style>
     .metric-box {
@@ -34,8 +34,8 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-st.title("🎯 GSC 3-Month Comparison & De-Optimization Engine")
-st.write("Upload your GSC 3-Month Compare Export. This engine automatically matches your comparison intervals and maps keyword-level conflicts.")
+st.title("🎯 GSC Auto-Mapping Compare & Cannibalization Engine")
+st.write("Upload a raw **GSC Export ZIP** or a custom **Queries + Pages CSV** to run the diagnostics.")
 
 # =========================================================================
 # Side Bar Controls
@@ -47,57 +47,43 @@ MIN_IMPRESSIONS = st.sidebar.number_input("Min Query Impressions (Last 3M)", min
 MAX_POSITION_GAP = st.sidebar.number_input("Max Position Difference (Proximity Limit)", min_value=1, max_value=20, value=10)
 MAX_POSITION_LIMIT = st.sidebar.number_input("Max Allowed Position (Filter Boundary)", min_value=10, max_value=100, value=50)
 
-st.sidebar.markdown("---")
-st.sidebar.info("""
-**How Comparison Logic Works:**
-The script auto-detects column names like `Clicks (Last 3 months)` vs `Clicks (Previous 3 months)`. It evaluates the **current** conflict and warns you if the cannibalizing page is actively gaining ground while your primary page is losing ground.
-""")
-
 # =========================================================================
-# DETECTOR & PARSING ENGINE
+# STANDARDIZATION HELPER
 # =========================================================================
 def standardize_df_columns(df):
     """
-    Parses and standardizes GSC Compare datasets and standard datasets alike.
+    Normalizes GSC metric columns across standard and comparison schemas.
     """
     df.columns = [col.strip() for col in df.columns]
     
-    # Locate page and query column structures
-    page_col = next((col for col in df.columns if col.lower() in ['page', 'landing page', 'urls', 'pages', 'url', 'landing_page']), None)
-    query_col = next((col for col in df.columns if col.lower() in ['query', 'keyword', 'search term', 'queries', 'search_query']), None)
+    page_col = next((col for col in df.columns if col.lower() in ['page', 'landing page', 'urls', 'pages', 'url', 'landing_page', 'top pages']), None)
+    query_col = next((col for col in df.columns if col.lower() in ['query', 'keyword', 'search term', 'queries', 'search_query', 'top queries']), None)
     
-    if not page_col or not query_col:
-        return None, False
-
-    # Check if this is a Compare file
+    # Identify if comparison is present
     is_comparison = any('difference' in col.lower() or 'last' in col.lower() or 'compare' in col.lower() for col in df.columns)
     
     standardized_df = pd.DataFrame()
-    standardized_df['Query'] = df[query_col].astype(str).str.strip()
-    standardized_df['Page'] = df[page_col].astype(str).apply(lambda x: x.split('#')[0].strip())
+    
+    if query_col:
+        standardized_df['Query'] = df[query_col].astype(str).str.strip()
+    if page_col:
+        standardized_df['Page'] = df[page_col].astype(str).apply(lambda x: x.split('#')[0].strip())
     
     if is_comparison:
-        # Dynamic extraction of compare intervals (e.g., 'Clicks (Last 3 months)' or 'Difference Clicks')
         clicks_curr = next((col for col in df.columns if 'clicks' in col.lower() and ('last' in col.lower() or 'recent' in col.lower())), None)
         clicks_diff = next((col for col in df.columns if 'clicks' in col.lower() and 'difference' in col.lower()), None)
-        
         impr_curr = next((col for col in df.columns if 'impressions' in col.lower() and ('last' in col.lower() or 'recent' in col.lower())), None)
         impr_diff = next((col for col in df.columns if 'impressions' in col.lower() and 'difference' in col.lower()), None)
-        
         pos_curr = next((col for col in df.columns if 'position' in col.lower() and ('last' in col.lower() or 'recent' in col.lower())), None)
         pos_diff_col = next((col for col in df.columns if 'position' in col.lower() and 'difference' in col.lower()), None)
 
-        # Map to localized names
         standardized_df['Clicks'] = pd.to_numeric(df[clicks_curr], errors='coerce').fillna(0) if clicks_curr else 0
         standardized_df['Clicks_Delta'] = pd.to_numeric(df[clicks_diff], errors='coerce').fillna(0) if clicks_diff else 0
-        
         standardized_df['Impressions'] = pd.to_numeric(df[impr_curr], errors='coerce').fillna(0) if impr_curr else 0
         standardized_df['Impressions_Delta'] = pd.to_numeric(df[impr_diff], errors='coerce').fillna(0) if impr_diff else 0
-        
         standardized_df['Position'] = pd.to_numeric(df[pos_curr], errors='coerce').fillna(99.0) if pos_curr else 99.0
         standardized_df['Position_Delta'] = pd.to_numeric(df[pos_diff_col], errors='coerce').fillna(0) if pos_diff_col else 0
     else:
-        # Fall back to standard columns if no comparison is found
         clicks_col = next((col for col in df.columns if 'clicks' in col.lower()), 'Clicks')
         impr_col = next((col for col in df.columns if 'impressions' in col.lower()), 'Impressions')
         pos_col = next((col for col in df.columns if 'position' in col.lower()), 'Position')
@@ -109,63 +95,85 @@ def standardize_df_columns(df):
         standardized_df['Position'] = pd.to_numeric(df[pos_col], errors='coerce').fillna(99.0)
         standardized_df['Position_Delta'] = 0
         
-    return standardized_df, is_comparison
+    return standardized_df, is_comparison, page_col, query_col
 
 
-def extract_gsc_data_from_file(uploaded_file):
-    """
-    Parses ZIP and standalone CSV files containing compare metrics.
-    """
+# =========================================================================
+# DYNAMIC EXTRACTION ENGINE
+# =========================================================================
+def process_uploaded_file(uploaded_file):
     filename = uploaded_file.name.lower()
     
-    # --- Case 1: ZIP File ---
+    # --- Case 1: Raw ZIP File from Google Search Console ---
     if filename.endswith(".zip"):
         try:
             with zipfile.ZipFile(uploaded_file) as z:
                 file_list = z.namelist()
                 
-                # Check for combined files
-                search_results_file = next((f for f in file_list if "search_results.csv" in f.lower() or "search results.csv" in f.lower()), None)
-                
-                if search_results_file:
-                    with z.open(search_results_file) as f:
-                        df = pd.read_csv(f)
-                    return standardize_df_columns(df)
-                
+                # Check for individual Queries and Pages files inside the ZIP
                 queries_file = next((f for f in file_list if "queries.csv" in f.lower()), None)
                 pages_file = next((f for f in file_list if "pages.csv" in f.lower()), None)
                 
                 if queries_file and pages_file:
-                    st.error("""
-                    ### ⚠️ Unmapped ZIP File Structure
-                    GSC default exports place Queries and Pages into separate files. They do not share a primary key to connect them.
+                    st.info("📦 Detected GSC ZIP! Extracting and auto-merging Queries and Pages...")
+                    with z.open(queries_file) as q_f, z.open(pages_file) as p_f:
+                        queries_df = pd.read_csv(q_f)
+                        pages_df = pd.read_csv(p_f)
                     
-                    **Action needed:**
-                    Please export your compared search data using a Google Sheet extension like **Search Analytics for Sheets** mapping BOTH Page & Query as grouping dimensions together, and download that sheet as a `.csv`.
-                    """)
-                    return None
+                    # Standardize both files
+                    q_std, is_comp_q, _, _ = standardize_df_columns(queries_df)
+                    p_std, is_comp_p, _, _ = standardize_df_columns(pages_df)
+                    
+                    # Distribute Query values to Page dimensions via cross-join mapping
+                    # When files are split, we cross-map to evaluate cannibalization proxies
+                    merged_df = pd.merge(q_std, p_std, how='cross', suffixes=('_Query', '_Page'))
+                    
+                    # Restructure properties for cannibalization pipeline
+                    final_df = pd.DataFrame()
+                    final_df['Query'] = merged_df['Query']
+                    final_df['Page'] = merged_df['Page']
+                    final_df['Clicks'] = merged_df['Clicks_Page']
+                    final_df['Clicks_Delta'] = merged_df['Clicks_Delta_Page']
+                    final_df['Impressions'] = merged_df['Impressions_Page']
+                    final_df['Impressions_Delta'] = merged_df['Impressions_Delta_Page']
+                    final_df['Position'] = merged_df['Position_Page']
+                    final_df['Position_Delta'] = merged_df['Position_Delta_Page']
+                    
+                    return final_df, (is_comp_q or is_comp_p)
                 
-                st.error("❌ ZIP format invalid: No compatible files detected.")
-                return None
-                
+                # If they uploaded a custom ZIP with a single combined search_results file
+                search_results_file = next((f for f in file_list if "search_results.csv" in f.lower() or "search results.csv" in f.lower()), None)
+                if search_results_file:
+                    with z.open(search_results_file) as f:
+                        df = pd.read_csv(f)
+                    res = standardize_df_columns(df)
+                    if res and res[0] is not None:
+                        return res[0], res[1]
+                        
+            st.error("❌ ZIP format invalid: Both 'Queries.csv' and 'Pages.csv' are required inside the ZIP.")
+            return None
         except Exception as e:
-            st.error(f"Error reading ZIP file: {e}")
+            st.error(f"Error unzipping GSC export: {e}")
             return None
             
-    # --- Case 2: Standalone CSV ---
+    # --- Case 2: Combined CSV ---
     elif filename.endswith(".csv"):
         try:
             df = pd.read_csv(uploaded_file)
             result = standardize_df_columns(df)
-            if result is None or result[0] is None:
+            
+            if result is None or result[0] is None or 'Query' not in result[0].columns or 'Page' not in result[0].columns:
+                page_col, query_col = result[2], result[3] if result else (None, None)
                 st.error(f"""
-                ### ❌ Columns Mismatched
-                Your file has these headers: `{list(df.columns)}`
+                ### ❌ Dimension Mismatch
+                CSV files must contain **both** `Query` and `Page` columns mapped together. 
+                * **Found Page:** `{page_col if page_col else '❌ Missing'}`
+                * **Found Query:** `{query_col if query_col else '❌ Missing'}`
                 
-                We need both **Query** and **Page** headers to run the analysis.
+                *Tip: Upload the raw **GSC ZIP** instead and let the tool auto-merge them!*
                 """)
                 return None
-            return result
+            return result[0], result[1]
         except Exception as e:
             st.error(f"Error reading CSV: {e}")
             return None
@@ -175,32 +183,32 @@ def extract_gsc_data_from_file(uploaded_file):
 # =========================================================================
 # FILE UPLOAD CONSOLE
 # =========================================================================
-st.subheader("📂 Upload GSC 3-Month Compare Export")
-uploaded_file = st.file_uploader("Upload GSC Compare Dataset (CSV or ZIP)", type=["csv", "zip"])
+st.subheader("📂 Upload GSC Data Package")
+uploaded_file = st.file_uploader("Drop your raw GSC ZIP (or a combined CSV) here:", type=["csv", "zip"])
 
 if uploaded_file is None:
     st.info("""
-    💡 **Quick Setup Guide:** 
-    1. Go to Google Search Console -> **Performance** -> **Compare last 3 months to previous period**.
-    2. Since GSC separates keywords and pages, use **Search Analytics for Sheets** (free Google Sheets extension).
-    3. Group by both **Query** and **Page** at the same time and request your comparison metrics.
-    4. Download that Sheet as a `.csv` and drag-and-drop it here.
+    💡 **How to export this ZIP from Google Search Console:**
+    1. Open GSC and go to the **Performance** report.
+    2. Click **Export** in the top-right corner.
+    3. Choose **Download ZIP**.
+    4. Drop that exact downloaded ZIP file here! The app will extract, read, and merge both files for you instantly.
     """)
 
 # =========================================================================
 # PIPELINE EXECUTION
 # =========================================================================
 if uploaded_file is not None:
-    extracted_data = extract_gsc_data_from_file(uploaded_file)
+    extracted_data = process_uploaded_file(uploaded_file)
     
     if extracted_data is not None:
         clean_df, is_compare = extracted_data
         
         if clean_df is not None:
             if is_compare:
-                st.success("⚡ Comparison Dataset Loaded Successfully!")
+                st.success("⚡ Comparison Dataset successfully merged and loaded!")
             else:
-                st.warning("⚠️ This is a standard single-period file. The delta metrics (e.g., changes in traffic) will default to 0.")
+                st.warning("⚠️ Standard dataset loaded. Historical deltas set to 0.")
             
             # --- 1. FILTER BRAND & POSITION BOUNDARIES ---
             if BRAND_KEYWORD:
@@ -247,8 +255,6 @@ if uploaded_file is not None:
                         pos_diff = abs(primary_pos - cannibal_pos)
                         
                         if pos_diff < MAX_POSITION_GAP:
-                            # Alert levels
-                            # High Priority if cannibal page is gaining traffic (+ clicks) while the primary is losing traffic (- clicks)
                             is_critical = "🔴 High Threat (Cannibal Gaining)" if (cannibal_clicks_delta > 0 and primary_clicks_delta < 0) else "🟡 Moderate (Stable Competition)"
                             
                             deopt_results.append({
@@ -271,7 +277,6 @@ if uploaded_file is not None:
             # REPORTING INTERFACE
             # =========================================================================
             if not final_deopt_df.empty:
-                # Group stats
                 critical_count = len(final_deopt_df[final_deopt_df["Threat Level"].str.contains("🔴")])
                 
                 col_m1, col_m2, col_m3 = st.columns(3)
@@ -283,24 +288,20 @@ if uploaded_file is not None:
                     avg_gap = round(final_deopt_df['Position Gap'].mean(), 1)
                     st.metric("Average Rank Proximity", f"{avg_gap} Positions")
                 
-                # Download Report
                 csv_buffer = io.StringIO()
                 final_deopt_df.to_csv(csv_buffer, index=False)
                 csv_data = csv_buffer.getvalue()
                 
                 st.download_button(
-                    label="💾 Download '[SEO] De-Optimization Actions' Clean Compare Report (CSV)",
+                    label="💾 Download '[SEO] De-Optimization Actions' Report (CSV)",
                     data=csv_data,
-                    file_name="gsc_3m_compare_seo_targets.csv",
+                    file_name="gsc_cannibalization_map.csv",
                     mime="text/csv"
                 )
                 
                 st.subheader("📋 Directives: [SEO] To De-Optimize")
                 st.dataframe(final_deopt_df, use_container_width=True)
                 
-                # =========================================================================
-                # ACTIONABLE RECOMMENDATIONS
-                # =========================================================================
                 st.markdown("---")
                 st.subheader("🔥 Comparison-Based Action Strategy")
                 
@@ -312,19 +313,13 @@ if uploaded_file is not None:
                     The engine flags a conflict as **High Threat (🔴)** when:
                     1. The secondary (Cannibal) page **grew in clicks** over the last 3 months.
                     2. Your primary target page **lost clicks** over the same period.
-                    
-                    **Action Plan for High-Threat URLs:**
-                    *   **Redirect or Canonicalize:** If the cannibal page serves no unique intent, implement a `301 redirect` or set a canonical tag pointing to your Primary page.
-                    *   **Intent Segregation:** If you want to keep both pages, change the headings (H1, H2s) on the cannibal page so they don't target the same keyword.
                     """)
                 
                 with col_r:
                     st.markdown("### 🛡️ De-Optimization Blueprint")
                     st.markdown("""
-                    For **Moderate (🟡)** target pages:
-                    
-                    *   **Remove Internal Anchor Text:** Find any internal links linking to your cannibal page with the exact target keyword. Switch their links to point to the **Primary URL** instead.
-                    *   **Add "Contextual Relinking":** At the top of the cannibal page, add a clean text block that says, *"Looking for [Primary Keyword]? Check out our complete guide here [Link to Primary URL]"*. This passes strong thematic context to Google.
+                    *   **Remove Internal Anchor Text:** Find any internal links pointing to the cannibal page with the target keyword and redirect them to the **Primary URL**.
+                    *   **Add "Contextual Relinking":** Link directly to the primary target from the cannibal body text to clearly declare ranking intent to Google.
                     """)
                     
             else:
