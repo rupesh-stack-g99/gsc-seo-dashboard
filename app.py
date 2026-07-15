@@ -8,12 +8,12 @@ import zipfile
 # PAGE CONFIGURATION & LAYOUT
 # =========================================================================
 st.set_page_config(
-    page_title="SEO Cannibalization & De-Optimization Dashboard",
+    page_title="SEO Compare & Cannibalization Engine",
     page_icon="🎯",
     layout="wide"
 )
 
-# Custom Styling
+# Custom CSS for polished interface
 st.markdown("""
     <style>
     .metric-box {
@@ -34,13 +34,13 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-st.title("🎯 GSC ZIP & CSV SEO Diagnostic Engine")
-st.write("Upload a combined Query-Page map CSV or GSC export to identify keyword conflicts.")
+st.title("🎯 GSC 3-Month Comparison & De-Optimization Engine")
+st.write("Upload your GSC 3-Month Compare Export. This engine automatically matches your comparison intervals and maps keyword-level conflicts.")
 
 # =========================================================================
-# CONFIGURATION SIDEBAR
+# Side Bar Controls
 # =========================================================================
-st.sidebar.header("🛠️ Processing Rules & Thresholds")
+st.sidebar.header("🛠️ Diagnostic Parameters")
 
 BRAND_KEYWORD = st.sidebar.text_input("Brand Keyword to Exclude", value="botoxie").lower().strip()
 MIN_IMPRESSIONS = st.sidebar.number_input("Min Query Impressions (Last 3M)", min_value=1, value=100)
@@ -49,8 +49,8 @@ MAX_POSITION_LIMIT = st.sidebar.number_input("Max Allowed Position (Filter Bound
 
 st.sidebar.markdown("---")
 st.sidebar.info("""
-**How the Proximity Rule Works:**
-Only conflicts where the **Primary Page** and the **Cannibal Page** rank within **10 positions** of each other will be surfaced.
+**How Comparison Logic Works:**
+The script auto-detects column names like `Clicks (Last 3 months)` vs `Clicks (Previous 3 months)`. It evaluates the **current** conflict and warns you if the cannibalizing page is actively gaining ground while your primary page is losing ground.
 """)
 
 # =========================================================================
@@ -58,17 +58,18 @@ Only conflicts where the **Primary Page** and the **Cannibal Page** rank within 
 # =========================================================================
 def standardize_df_columns(df):
     """
-    Standardizes variable naming across standard and comparison schemas.
+    Parses and standardizes GSC Compare datasets and standard datasets alike.
     """
     df.columns = [col.strip() for col in df.columns]
     
-    # Fuzzy match headers
+    # Locate page and query column structures
     page_col = next((col for col in df.columns if col.lower() in ['page', 'landing page', 'urls', 'pages', 'url', 'landing_page']), None)
     query_col = next((col for col in df.columns if col.lower() in ['query', 'keyword', 'search term', 'queries', 'search_query']), None)
     
     if not page_col or not query_col:
         return None, False
 
+    # Check if this is a Compare file
     is_comparison = any('difference' in col.lower() or 'last' in col.lower() or 'compare' in col.lower() for col in df.columns)
     
     standardized_df = pd.DataFrame()
@@ -76,44 +77,44 @@ def standardize_df_columns(df):
     standardized_df['Page'] = df[page_col].astype(str).apply(lambda x: x.split('#')[0].strip())
     
     if is_comparison:
-        clicks_col = next((col for col in df.columns if 'clicks' in col.lower() and 'last' in col.lower()), None)
-        impr_col = next((col for col in df.columns if 'impressions' in col.lower() and 'last' in col.lower()), None)
-        ctr_col = next((col for col in df.columns if 'ctr' in col.lower() and 'last' in col.lower()), None)
-        pos_col = next((col for col in df.columns if 'position' in col.lower() and 'last' in col.lower()), None)
+        # Dynamic extraction of compare intervals (e.g., 'Clicks (Last 3 months)' or 'Difference Clicks')
+        clicks_curr = next((col for col in df.columns if 'clicks' in col.lower() and ('last' in col.lower() or 'recent' in col.lower())), None)
+        clicks_diff = next((col for col in df.columns if 'clicks' in col.lower() and 'difference' in col.lower()), None)
         
-        standardized_df['Clicks'] = pd.to_numeric(df[clicks_col if clicks_col else 'Clicks'], errors='coerce').fillna(0)
-        standardized_df['Impressions'] = pd.to_numeric(df[impr_col if impr_col else 'Impressions'], errors='coerce').fillna(0)
+        impr_curr = next((col for col in df.columns if 'impressions' in col.lower() and ('last' in col.lower() or 'recent' in col.lower())), None)
+        impr_diff = next((col for col in df.columns if 'impressions' in col.lower() and 'difference' in col.lower()), None)
         
-        ctr_series = df[ctr_col] if ctr_col else df['CTR']
-        if ctr_series.dtype == object:
-            ctr_series = ctr_series.str.replace('%', '', regex=False)
-        standardized_df['CTR'] = pd.to_numeric(ctr_series, errors='coerce').fillna(0) / 100.0
+        pos_curr = next((col for col in df.columns if 'position' in col.lower() and ('last' in col.lower() or 'recent' in col.lower())), None)
+        pos_diff_col = next((col for col in df.columns if 'position' in col.lower() and 'difference' in col.lower()), None)
+
+        # Map to localized names
+        standardized_df['Clicks'] = pd.to_numeric(df[clicks_curr], errors='coerce').fillna(0) if clicks_curr else 0
+        standardized_df['Clicks_Delta'] = pd.to_numeric(df[clicks_diff], errors='coerce').fillna(0) if clicks_diff else 0
         
-        standardized_df['Position'] = pd.to_numeric(df[pos_col if pos_col else 'Position'], errors='coerce').fillna(99.0)
+        standardized_df['Impressions'] = pd.to_numeric(df[impr_curr], errors='coerce').fillna(0) if impr_curr else 0
+        standardized_df['Impressions_Delta'] = pd.to_numeric(df[impr_diff], errors='coerce').fillna(0) if impr_diff else 0
+        
+        standardized_df['Position'] = pd.to_numeric(df[pos_curr], errors='coerce').fillna(99.0) if pos_curr else 99.0
+        standardized_df['Position_Delta'] = pd.to_numeric(df[pos_diff_col], errors='coerce').fillna(0) if pos_diff_col else 0
     else:
+        # Fall back to standard columns if no comparison is found
         clicks_col = next((col for col in df.columns if 'clicks' in col.lower()), 'Clicks')
         impr_col = next((col for col in df.columns if 'impressions' in col.lower()), 'Impressions')
-        ctr_col = next((col for col in df.columns if 'ctr' in col.lower()), 'CTR')
         pos_col = next((col for col in df.columns if 'position' in col.lower()), 'Position')
         
         standardized_df['Clicks'] = pd.to_numeric(df[clicks_col], errors='coerce').fillna(0)
+        standardized_df['Clicks_Delta'] = 0
         standardized_df['Impressions'] = pd.to_numeric(df[impr_col], errors='coerce').fillna(0)
-        
-        ctr_series = df[ctr_col]
-        if ctr_series.dtype == object:
-            ctr_series = ctr_series.str.replace('%', '', regex=False)
-        standardized_df['CTR'] = pd.to_numeric(ctr_series, errors='coerce').fillna(0)
-        if standardized_df['CTR'].max() > 1.0:
-            standardized_df['CTR'] = standardized_df['CTR'] / 100.0
-            
+        standardized_df['Impressions_Delta'] = 0
         standardized_df['Position'] = pd.to_numeric(df[pos_col], errors='coerce').fillna(99.0)
+        standardized_df['Position_Delta'] = 0
         
     return standardized_df, is_comparison
 
 
 def extract_gsc_data_from_file(uploaded_file):
     """
-    Parses standalone CSVs or zip files.
+    Parses ZIP and standalone CSV files containing compare metrics.
     """
     filename = uploaded_file.name.lower()
     
@@ -131,28 +132,24 @@ def extract_gsc_data_from_file(uploaded_file):
                         df = pd.read_csv(f)
                     return standardize_df_columns(df)
                 
-                # If they only uploaded queries and pages separately
                 queries_file = next((f for f in file_list if "queries.csv" in f.lower()), None)
                 pages_file = next((f for f in file_list if "pages.csv" in f.lower()), None)
                 
                 if queries_file and pages_file:
                     st.error("""
-                    ### ⚠️ Incompatible ZIP File Structure
-                    You uploaded a native GSC ZIP file. 
-                    * Google's default `Queries.csv` contains only queries.
-                    * Google's default `Pages.csv` contains only pages.
+                    ### ⚠️ Unmapped ZIP File Structure
+                    GSC default exports place Queries and Pages into separate files. They do not share a primary key to connect them.
                     
-                    They cannot be analyzed because they aren't mapped together.
-                    
-                    **How to resolve:** Read the step-by-step instructions below the upload box to obtain a combined Query-Page map.
+                    **Action needed:**
+                    Please export your compared search data using a Google Sheet extension like **Search Analytics for Sheets** mapping BOTH Page & Query as grouping dimensions together, and download that sheet as a `.csv`.
                     """)
                     return None
                 
-                st.error("❌ Invalid ZIP Archive: No compatible GSC CSVs found inside.")
+                st.error("❌ ZIP format invalid: No compatible files detected.")
                 return None
                 
         except Exception as e:
-            st.error(f"Failed to unpack ZIP file: {e}")
+            st.error(f"Error reading ZIP file: {e}")
             return None
             
     # --- Case 2: Standalone CSV ---
@@ -161,14 +158,12 @@ def extract_gsc_data_from_file(uploaded_file):
             df = pd.read_csv(uploaded_file)
             result = standardize_df_columns(df)
             if result is None or result[0] is None:
-                st.error("""
-                ### ❌ Missing Mapped Columns
-                The CSV you uploaded doesn't contain both 'Query' and 'Page' columns.
+                st.error(f"""
+                ### ❌ Columns Mismatched
+                Your file has these headers: `{list(df.columns)}`
                 
-                **Your file's actual columns:** `{}`
-                
-                To solve this, please see the guide below on how to export a combined Query-Page CSV.
-                """.format(list(df.columns)))
+                We need both **Query** and **Page** headers to run the analysis.
+                """)
                 return None
             return result
         except Exception as e:
@@ -180,15 +175,16 @@ def extract_gsc_data_from_file(uploaded_file):
 # =========================================================================
 # FILE UPLOAD CONSOLE
 # =========================================================================
-st.subheader("📂 Import Search Console Datasets")
-uploaded_file = st.file_uploader("Upload GSC Export (CSV or ZIP)", type=["csv", "zip"])
+st.subheader("📂 Upload GSC 3-Month Compare Export")
+uploaded_file = st.file_uploader("Upload GSC Compare Dataset (CSV or ZIP)", type=["csv", "zip"])
 
-# Helper instructions if nothing is uploaded or error occurs
 if uploaded_file is None:
-    st.info("💡 **Tips for exporting your GSC Data:**")
-    st.markdown("""
-    *   **The Problem:** Standard GSC exports separate your Queries and Pages into isolated lists.
-    *   **The Easy Fix:** Install the free **Search Analytics for Sheets** Google Sheets extension, fetch your GSC data grouped by both **Query** and **Page** at the same time, download as a CSV, and drop it here!
+    st.info("""
+    💡 **Quick Setup Guide:** 
+    1. Go to Google Search Console -> **Performance** -> **Compare last 3 months to previous period**.
+    2. Since GSC separates keywords and pages, use **Search Analytics for Sheets** (free Google Sheets extension).
+    3. Group by both **Query** and **Page** at the same time and request your comparison metrics.
+    4. Download that Sheet as a `.csv` and drag-and-drop it here.
     """)
 
 # =========================================================================
@@ -201,9 +197,12 @@ if uploaded_file is not None:
         clean_df, is_compare = extracted_data
         
         if clean_df is not None:
-            st.success(f"⚡ File parsed! Loaded {'GSC Period Comparison' if is_compare else 'Standard GSC Performance'} dataset.")
+            if is_compare:
+                st.success("⚡ Comparison Dataset Loaded Successfully!")
+            else:
+                st.warning("⚠️ This is a standard single-period file. The delta metrics (e.g., changes in traffic) will default to 0.")
             
-            # --- 1. FILTER BRAND & BOUNDARIES ---
+            # --- 1. FILTER BRAND & POSITION BOUNDARIES ---
             if BRAND_KEYWORD:
                 clean_df = clean_df[~clean_df['Query'].str.lower().str.contains(BRAND_KEYWORD, na=False)]
             clean_df = clean_df[clean_df['Position'] <= MAX_POSITION_LIMIT]
@@ -211,9 +210,11 @@ if uploaded_file is not None:
             # --- 2. AGGREGATE DUPLICATES (URL roll-up) ---
             rolled_df = clean_df.groupby(['Query', 'Page']).agg({
                 'Clicks': 'sum',
+                'Clicks_Delta': 'sum',
                 'Impressions': 'sum',
-                'CTR': 'mean',
-                'Position': 'mean'
+                'Impressions_Delta': 'sum',
+                'Position': 'mean',
+                'Position_Delta': 'mean'
             }).reset_index()
             
             # --- 3. EVALUATE CONFLICTS ---
@@ -234,23 +235,32 @@ if uploaded_file is not None:
                     primary_url = primary_row['Page']
                     primary_clicks = int(primary_row['Clicks'])
                     primary_pos = round(primary_row['Position'], 1)
+                    primary_clicks_delta = int(primary_row['Clicks_Delta'])
                     
                     for index in range(1, len(pages_data)):
                         cannibal_row = pages_data.iloc[index]
                         cannibal_url = cannibal_row['Page']
                         cannibal_clicks = int(cannibal_row['Clicks'])
                         cannibal_pos = round(cannibal_row['Position'], 1)
+                        cannibal_clicks_delta = int(cannibal_row['Clicks_Delta'])
                         
                         pos_diff = abs(primary_pos - cannibal_pos)
                         
                         if pos_diff < MAX_POSITION_GAP:
+                            # Alert levels
+                            # High Priority if cannibal page is gaining traffic (+ clicks) while the primary is losing traffic (- clicks)
+                            is_critical = "🔴 High Threat (Cannibal Gaining)" if (cannibal_clicks_delta > 0 and primary_clicks_delta < 0) else "🟡 Moderate (Stable Competition)"
+                            
                             deopt_results.append({
+                                "Threat Level": is_critical,
                                 "Keyword/Query": query,
                                 "Primary URL": primary_url,
-                                "Primary Clicks": primary_clicks,
+                                "Primary Clicks (3M)": primary_clicks,
+                                "Primary Clicks Delta": primary_clicks_delta,
                                 "Primary Position": primary_pos,
                                 "Cannibal URL to De-Optimize": cannibal_url,
-                                "Cannibal Clicks": cannibal_clicks,
+                                "Cannibal Clicks (3M)": cannibal_clicks,
+                                "Cannibal Clicks Delta": cannibal_clicks_delta,
                                 "Cannibal Position": cannibal_pos,
                                 "Position Gap": round(pos_diff, 1)
                             })
@@ -261,23 +271,27 @@ if uploaded_file is not None:
             # REPORTING INTERFACE
             # =========================================================================
             if not final_deopt_df.empty:
+                # Group stats
+                critical_count = len(final_deopt_df[final_deopt_df["Threat Level"].str.contains("🔴")])
+                
                 col_m1, col_m2, col_m3 = st.columns(3)
                 with col_m1:
                     st.metric("Total Conflicts Identified", len(final_deopt_df))
                 with col_m2:
-                    st.metric("Unique Keywords Affected", final_deopt_df['Keyword/Query'].nunique())
+                    st.metric("🔴 High-Threat Conflicts", critical_count)
                 with col_m3:
                     avg_gap = round(final_deopt_df['Position Gap'].mean(), 1)
-                    st.metric("Average Rank Gap", f"{avg_gap} Positions")
+                    st.metric("Average Rank Proximity", f"{avg_gap} Positions")
                 
+                # Download Report
                 csv_buffer = io.StringIO()
                 final_deopt_df.to_csv(csv_buffer, index=False)
                 csv_data = csv_buffer.getvalue()
                 
                 st.download_button(
-                    label="💾 Download '[SEO] To De-Optimize' Clean Report (CSV)",
+                    label="💾 Download '[SEO] De-Optimization Actions' Clean Compare Report (CSV)",
                     data=csv_data,
-                    file_name="seo_to_de_optimize_report.csv",
+                    file_name="gsc_3m_compare_seo_targets.csv",
                     mime="text/csv"
                 )
                 
@@ -288,42 +302,29 @@ if uploaded_file is not None:
                 # ACTIONABLE RECOMMENDATIONS
                 # =========================================================================
                 st.markdown("---")
-                st.subheader("🔥 Strategic SEO Action Plan")
-                
-                focus_df = final_deopt_df.groupby('Primary URL').agg({
-                    'Keyword/Query': 'count',
-                    'Primary Clicks': 'sum',
-                    'Cannibal URL to De-Optimize': 'nunique'
-                }).rename(columns={
-                    'Keyword/Query': 'Total Cannibalized Keywords',
-                    'Primary Clicks': 'Estimated Core Clicks',
-                    'Cannibal URL to De-Optimize': 'Aggressor Pages'
-                }).sort_values(by='Total Cannibalized Keywords', ascending=False).reset_index().head(5)
+                st.subheader("🔥 Comparison-Based Action Strategy")
                 
                 col_l, col_r = st.columns([1, 1])
                 
                 with col_l:
-                    st.markdown("### 🎯 Top 5 Pages to Focus Optimization")
-                    st.write("These core primary landing pages are facing heavy rank friction from nearby pages. Clearing up their internal signals will unleash major traffic recoveries.")
+                    st.markdown("### 🔴 Critical Threat Alerts Explained")
+                    st.write("""
+                    The engine flags a conflict as **High Threat (🔴)** when:
+                    1. The secondary (Cannibal) page **grew in clicks** over the last 3 months.
+                    2. Your primary target page **lost clicks** over the same period.
                     
-                    for idx, row in focus_df.iterrows():
-                        st.markdown(f"""
-                        <div class="focus-card">
-                            <strong style="color:#ff4b4b;">Priority #{idx+1}: {row['Primary URL']}</strong><br/>
-                            • Competing Queries: <b>{row['Total Cannibalized Keywords']}</b><br/>
-                            • Aggressor Landing Pages competing: <b>{row['Aggressor Pages']}</b><br/>
-                            • Current Organic Click Pool: <b>{row['Estimated Core Clicks']}</b>
-                        </div>
-                        """, unsafe_allow_html=True)
+                    **Action Plan for High-Threat URLs:**
+                    *   **Redirect or Canonicalize:** If the cannibal page serves no unique intent, implement a `301 redirect` or set a canonical tag pointing to your Primary page.
+                    *   **Intent Segregation:** If you want to keep both pages, change the headings (H1, H2s) on the cannibal page so they don't target the same keyword.
+                    """)
                 
                 with col_r:
-                    st.markdown("### 🛡️ Critical De-Optimization Playbook")
+                    st.markdown("### 🛡️ De-Optimization Blueprint")
                     st.markdown("""
-                    For the **Cannibal URLs to De-Optimize** identified on your screen:
+                    For **Moderate (🟡)** target pages:
                     
-                    *   **Title Tags & Header Checks:** Review the Cannibal URL. If it targets the exact core phrase of the primary page in its Title or H1, rephrase it to focus on a long-tail variant or helper search intent.
-                    *   **Internal Link Cleanups:** Locate internal text anchor links pointing to the Cannibal URL with your primary keyword. Edit those hyperlinks to point directly to the **Primary URL** instead.
-                    *   **Query-intent Mapping:** If the secondary page is informational and the primary is transactional, convert the informational page's direct keyword mentions into helpful text blocks that naturally link back up to your primary commercial page.
+                    *   **Remove Internal Anchor Text:** Find any internal links linking to your cannibal page with the exact target keyword. Switch their links to point to the **Primary URL** instead.
+                    *   **Add "Contextual Relinking":** At the top of the cannibal page, add a clean text block that says, *"Looking for [Primary Keyword]? Check out our complete guide here [Link to Primary URL]"*. This passes strong thematic context to Google.
                     """)
                     
             else:
