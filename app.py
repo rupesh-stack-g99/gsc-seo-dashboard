@@ -3,6 +3,7 @@ import pandas as pd
 import numpy as np
 import io
 import zipfile
+import re
 
 # Ensure Excel/zip dependencies
 try:
@@ -141,7 +142,7 @@ st.markdown("""
 st.markdown("""
 <div class="hero-banner">
     <h1>🕵️ Algorithmic SEO Detective</h1>
-    <p>This engine analyzes your Search Console data, matches keywords to their most likely ranking URLs, and serves actionable SEO directives inside clean investigation tabs.</p>
+    <p>This engine analyzes your Search Console data, matches keywords to their most likely landing pages using lexical mapping, and serves actionable SEO directives inside clean investigation tabs.</p>
 </div>
 """, unsafe_allow_html=True)
 
@@ -251,30 +252,54 @@ def parse_gsc_sheet(df, dim_name):
 
 def find_best_url_match(query_row, df_pages, max_offset=6.0):
     """
-    Algorithmic matching engine: correlates a query to its most likely landing page
-    by looking for pages that share similar ranking and volume profiles.
+    Advanced Lexical & Rank Matcher: 
+    Correlates a query string with your pages list by performing string-token 
+    overlap analysis combined with ranking range limitations.
     """
+    query_str = str(query_row['Queries']).lower().strip()
     q_pos = query_row['Position']
-    q_clicks = query_row['Clicks']
     
-    # Filter pages operating at a similar rank
+    # Tokenize the query, discarding short stop words
+    query_tokens = [re.sub(r'[^a-z0-9]', '', token) for token in query_str.split()]
+    query_tokens = [t for t in query_tokens if len(t) > 2 and t not in ['and', 'for', 'the', 'with', 'near']]
+    
+    # Pre-filter pages with ranking similarity
     candidates = df_pages[
         (df_pages['Position'] >= q_pos - max_offset) & 
         (df_pages['Position'] <= q_pos + max_offset)
-    ]
+    ].copy()
     
     if candidates.empty:
-        # Fallback to general top pages
-        candidates = df_pages
+        # Fallback to broader rank limit if matching pool is clean empty
+        candidates = df_pages[
+            (df_pages['Position'] >= q_pos - 15.0) & 
+            (df_pages['Position'] <= q_pos + 15.0)
+        ].copy()
         
-    # Pick candidate page with closest click volume or rank proximity
-    candidates = candidates.copy()
-    candidates['proximity'] = (candidates['Position'] - q_pos).abs()
-    candidates = candidates.sort_values(by=['proximity', 'Clicks'], ascending=[True, False])
+    if candidates.empty:
+        candidates = df_pages.copy()
+
+    best_score = -1
+    best_url = None
     
-    if not candidates.empty:
-        return candidates.iloc[0]['Pages']
-    return "Could not auto-resolve URL"
+    for _, p_row in candidates.iterrows():
+        url_path = str(p_row['Pages']).lower()
+        
+        # Calculate how many query tokens exist inside the URL string
+        match_count = sum(1 for token in query_tokens if token in url_path)
+        
+        # Give higher priority to exact matches of specialized topic keywords
+        score = match_count
+        
+        # Tie-breaker: prefer URLs with closer positions & higher clicks if text overlaps are tied
+        position_penalty = abs(p_row['Position'] - q_pos) * 0.05
+        score -= position_penalty
+        
+        if score > best_score:
+            best_score = score
+            best_url = p_row['Pages']
+            
+    return best_url if best_url else "Verification Required via GSC"
 
 def extract_gsc_payload(uploaded_zip):
     results = {}
