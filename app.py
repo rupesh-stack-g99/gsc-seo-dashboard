@@ -25,7 +25,6 @@ st.set_page_config(
 
 st.markdown("""
     <style>
-    /* Premium Midnight Dark Page Background */
     .stApp { 
         background-color: #0f172a !important; 
     }
@@ -39,7 +38,6 @@ st.markdown("""
         letter-spacing: -0.02em;
     }
     
-    /* Deep Indigo Gradient Executive Header */
     .hero-banner {
         background: linear-gradient(135deg, #1e3a8a 0%, #312e81 100%);
         color: #ffffff !important;
@@ -62,7 +60,6 @@ st.markdown("""
         font-weight: 400;
     }
     
-    /* Custom Risk Card & Alert Classes */
     .directive-card {
         background-color: #1e293b !important;
         border: 1px solid #334155 !important;
@@ -84,10 +81,6 @@ st.markdown("""
         border-left-color: #10b981 !important;
         background-color: #0f2d1e !important;
     }
-    .directive-card.info {
-        border-left-color: #6366f1 !important;
-        background-color: #171738 !important;
-    }
     
     .directive-title {
         font-size: 1.2rem !important;
@@ -101,7 +94,6 @@ st.markdown("""
         color: #cbd5e1 !important;
     }
     
-    /* Tab Styling Overrides for Contrast */
     button[data-baseweb="tab"] {
         font-size: 1.05rem !important;
         font-weight: 600 !important;
@@ -118,10 +110,31 @@ st.markdown("""
         padding: 12px;
         margin-top: 8px;
         font-size: 0.85rem;
-        color: #94a3b8;
+        color: #e2e8f0;
+    }
+
+    .warning-tag {
+        background-color: #7c2d12;
+        color: #fdba74;
+        padding: 2px 8px;
+        border-radius: 4px;
+        font-size: 0.75rem;
+        font-weight: bold;
+        display: inline-block;
+        margin-top: 4px;
+    }
+
+    .verified-tag {
+        background-color: #064e3b;
+        color: #6ee7b7;
+        padding: 2px 8px;
+        border-radius: 4px;
+        font-size: 0.75rem;
+        font-weight: bold;
+        display: inline-block;
+        margin-top: 4px;
     }
     
-    /* Explicit color for standard Streamlit text elements */
     .stMarkdown p, .stMarkdown span {
         color: #e2e8f0 !important;
     }
@@ -138,11 +151,10 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# Title Area Block
 st.markdown("""
 <div class="hero-banner">
-    <h1>🕵️ Algorithmic SEO Detective</h1>
-    <p>This engine analyzes your Search Console data, matches keywords to actual web landing pages (filtering out images and attachments), and highlights traffic gaps against industry benchmarks.</p>
+    <h1>🕵️ Algorithmic SEO Detective (High-Precision Edition)</h1>
+    <p>This upgraded release uses hard semantic scoring filters to map keywords to exact core landing page slugs, identifying mismatched intents with a secondary automated validation flag.</p>
 </div>
 """, unsafe_allow_html=True)
 
@@ -153,7 +165,7 @@ st.markdown("### ⚙️ Forensic Tuning & Parameters")
 
 cfg_col1, cfg_col2, cfg_col3 = st.columns(3)
 with cfg_col1:
-    BRAND_TERM = st.text_input("Exclude Branded Searches (Default is Blank):", value="").lower().strip()
+    BRAND_TERM = st.text_input("Exclude Branded Searches:", value="").lower().strip()
 with cfg_col2:
     MIN_IMPR_THRESHOLD = st.number_input("Minimum Impressions Threshold:", min_value=1, value=100)
 with cfg_col3:
@@ -161,7 +173,6 @@ with cfg_col3:
 
 st.markdown("---")
 
-# CTR Benchmark targets configuration
 CTR_BENCHMARKS = {
     1: 30.0, 2: 15.0, 3: 10.0, 4: 7.0, 5: 5.0,
     6: 4.0,  7: 3.0,  8: 2.5,  9: 2.0,  10: 1.5
@@ -170,7 +181,7 @@ for pos in range(11, 101):
     CTR_BENCHMARKS[pos] = round(15.0 / pos, 2)
 
 # =========================================================================
-# DATA CLEANING ENGINE (ROBUST BYPASS FOR GSC HEADER METADATA)
+# DATA CLEANING ENGINE
 # =========================================================================
 def clean_gsc_csv(bytes_data):
     try:
@@ -209,9 +220,7 @@ def parse_gsc_sheet(df, dim_name):
     normalized[dim_name] = df[target_col].astype(str).str.strip()
     
     if dim_name == 'Pages':
-        # Remove UTM parameters
         normalized = normalized[~normalized['Pages'].str.lower().str.contains('utm_|_utm|utm=', na=False)]
-        # CRITICAL FILTER: Remove static assets like images, pdfs, css, js
         asset_pattern = r'\.(jpg|jpeg|png|gif|webp|svg|pdf|css|js|txt|xml|mp4)$'
         normalized = normalized[~normalized['Pages'].str.lower().str.contains(asset_pattern, na=False)]
         
@@ -254,82 +263,89 @@ def parse_gsc_sheet(df, dim_name):
     
     return normalized
 
-def find_best_url_match(query_row, df_pages, max_offset=6.0):
+def find_best_url_match_precise(query_row, df_pages, max_offset=6.0):
     """
-    Advanced Lexical & Rank Matcher: 
-    Correlates a query string with your pages list by performing string-token 
-    overlap analysis combined with ranking range limitations.
+    High-Precision Semantic Matching:
+    Enforces distinct semantic scoring constraints to link queries to target URLs,
+    returning both the matched URL and a boolean confidence level flag.
     """
     query_str = str(query_row['Queries']).lower().strip()
     q_pos = query_row['Position']
     
-    # Tokenize the query, discarding short stop words
     query_tokens = [re.sub(r'[^a-z0-9]', '', token) for token in query_str.split()]
-    query_tokens = [t for t in query_tokens if len(t) > 2 and t not in ['and', 'for', 'the', 'with', 'near']]
+    core_nouns = [t for t in query_tokens if len(t) > 2 and t not in ['and', 'for', 'the', 'with', 'near', 'in', 'nj', 'newjersey']]
     
-    # Pre-filter pages with ranking similarity
+    # Filter candidates by position first
     candidates = df_pages[
         (df_pages['Position'] >= q_pos - max_offset) & 
         (df_pages['Position'] <= q_pos + max_offset)
     ].copy()
     
     if candidates.empty:
-        candidates = df_pages[
-            (df_pages['Position'] >= q_pos - 15.0) & 
-            (df_pages['Position'] <= q_pos + 15.0)
-        ].copy()
-        
-    if candidates.empty:
         candidates = df_pages.copy()
 
-    best_score = -1
+    best_score = -9999
     best_url = None
     
     for _, p_row in candidates.iterrows():
         url_path = str(p_row['Pages']).lower()
+        score = 0
         
-        # Calculate how many query tokens exist inside the URL string
-        match_count = sum(1 for token in query_tokens if token in url_path)
+        # Rule 1: Clean token overlap scoring
+        token_matches = sum(1 for token in core_nouns if token in url_path)
+        score += (token_matches * 5)
         
-        score = match_count
-        
-        # Tie-breaker penalty for position gap
-        position_penalty = abs(p_row['Position'] - q_pos) * 0.1
-        score -= position_penalty
+        # Rule 2: Strict anchor keyword bonus (e.g., if query has kybella, url MUST have kybella)
+        for critical_word in ['kybella', 'earlobe', 'piercing', 'mounjaro', 'tirzepatide', 'botox']:
+            if critical_word in query_str:
+                if critical_word in url_path:
+                    score += 20  # Heavy structural weight bonus
+                else:
+                    score -= 15  # Penalty for mismatching core service
+                    
+        # Rule 3: Geo-location alignment check
+        for geo in ['weehawken', 'hoboken', 'jersey']:
+            if geo in query_str and geo in url_path:
+                score += 5
+                
+        # Rule 4: Small position gap penalty
+        score -= (abs(p_row['Position'] - q_pos) * 0.2)
         
         if score > best_score:
             best_score = score
             best_url = p_row['Pages']
             
-    return best_url if best_url else "Verification Required via GSC"
+    # Confidence analysis validation flag
+    is_highly_confident = True
+    if best_url:
+        # If none of the actual service nouns are inside the URL, mark as unverified anomaly
+        any_token_in_url = any(token in best_url.lower() for token in core_nouns)
+        if not any_token_in_url and len(core_nouns) > 0:
+            is_highly_confident = False
+            
+    return best_url if best_url else "Manual GSC Check Required", is_highly_confident
 
 def extract_gsc_payload(uploaded_zip):
     results = {}
     try:
         with zipfile.ZipFile(uploaded_zip) as z:
             file_names = z.namelist()
-            
             for file_name in file_names:
                 if '__macosx' in file_name.lower() or not file_name.endswith('.csv'):
                     continue
-                    
                 with z.open(file_name) as f:
                     raw_df = clean_gsc_csv(f.read())
                     if raw_df is None or raw_df.empty:
                         continue
-                    
                     cols_lower = [str(c).lower() for c in raw_df.columns]
-                    
                     if any(q_term in cols_lower for q_term in ['query', 'queries', 'top queries', 'top query', 'search query']):
                         clean_df = parse_gsc_sheet(raw_df, 'Queries')
                         if clean_df is not None and not clean_df.empty:
                             results['Queries'] = clean_df
-                            
                     elif any(p_term in cols_lower for p_term in ['page', 'pages', 'top pages', 'top page', 'landing page', 'url']):
                         clean_df = parse_gsc_sheet(raw_df, 'Pages')
                         if clean_df is not None and not clean_df.empty:
                             results['Pages'] = clean_df
-                            
             return results
     except Exception as e:
         st.error(f"Error reading ZIP structure: {str(e)}")
@@ -338,7 +354,7 @@ def extract_gsc_payload(uploaded_zip):
 # =========================================================================
 # FORENSIC PIPELINE EXECUTION
 # =========================================================================
-uploaded_file = st.file_uploader("Upload GSC ZIP file to begin automated detective diagnostics:", type=["zip"])
+uploaded_file = st.file_uploader("Upload GSC ZIP file to begin automated diagnostics:", type=["zip"])
 
 if uploaded_file is not None:
     gsc = extract_gsc_payload(uploaded_file)
@@ -347,13 +363,10 @@ if uploaded_file is not None:
         df_q_raw = gsc['Queries'].copy()
         df_p = gsc['Pages'].copy()
         
-        # Apply brand filter dynamically
         df_q = df_q_raw[~df_q_raw['Queries'].str.lower().str.contains(BRAND_TERM, na=False)].copy() if BRAND_TERM else df_q_raw.copy()
         
-        # Calculate comparison trends
         losing_keys = df_q[df_q['Clicks_Delta'] < 0]
         gaining_keys = df_q[df_q['Clicks_Delta'] > 0]
-        
         total_lost_clicks = abs(losing_keys['Clicks_Delta'].sum())
         total_gained_clicks = gaining_keys['Clicks_Delta'].sum()
         
@@ -361,9 +374,6 @@ if uploaded_file is not None:
         if total_lost_clicks > 0:
             core_hit_score = round((total_lost_clicks / (total_lost_clicks + total_gained_clicks + 1e-5)) * 100, 1)
 
-        # -----------------------------------------------------------------
-        # STRUCTURING TAB-BASED ARCHITECTURE
-        # -----------------------------------------------------------------
         tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
             "🔍 Core Update Diagnostic",
             "📉 Keyword Decay Alerts",
@@ -377,69 +387,29 @@ if uploaded_file is not None:
         with tab1:
             st.markdown("## Algorithmic Updates Checker")
             if core_hit_score > 65.0:
-                st.markdown(f"""
-                <div class="directive-card danger">
-                    <div class="directive-title">🚨 Systemic Algorithmic Suppression Flagged ({core_hit_score}% Probability)</div>
-                    <div class="directive-text">
-                        <b>Diagnostic:</b> Over {core_hit_score}% of overall trend movements are strictly negative. Clicks and impressions are dropping simultaneously across uncorrelated keywords. This strongly correlates with a Google Core Algorithm Update or search classifier adjustment rather than a simple indexation glitch. <br/><br/>
-                        <b>Detective Action:</b> Audit your site-wide informational value. Avoid surface-level updates. Identify if pages hit hardest feature redundant introductory material, high affiliate/ad ratios, or lack distinct expert author perspectives (E-E-A-T).
-                    </div>
-                </div>
-                """, unsafe_allow_html=True)
-            elif core_hit_score > 35.0:
-                st.markdown(f"""
-                <div class="directive-card warning">
-                    <div class="directive-title">⚠️ Moderate Algorithmic Volatility Checked ({core_hit_score}% Probability)</div>
-                    <div class="directive-text">
-                        <b>Diagnostic:</b> Partial traffic degradation spotted across isolated clusters. This is likely not a site-wide quality penalty, but a sub-topic re-evaluation. Competitors are likely optimizing topical coverage or getting featured in newly introduced AI SERP widgets.<br/><br/>
-                        <b>Detective Action:</b> Isolate which specific sub-folders or page templates are decaying. Run content comparison sprints against those that rose in your niche over the last month.
-                    </div>
-                </div>
-                """, unsafe_allow_html=True)
+                st.markdown(f"""<div class="directive-card danger"><div class="directive-title">🚨 Systemic Algorithmic Suppression Flagged ({core_hit_score}% Probability)</div></div>""", unsafe_allow_html=True)
             else:
-                st.markdown("""
-                <div class="directive-card success">
-                    <div class="directive-title">✅ No Site-Wide Algorithmic Penalty Detected</div>
-                    <div class="directive-text">
-                        <b>Diagnostic:</b> Your domain performance shows organic stability or growth. Performance fluctuations are local, standard search mechanics rather than a core automated filter or quality suppression.
-                    </div>
-                </div>
-                """, unsafe_allow_html=True)
+                st.markdown("""<div class="directive-card success"><div class="directive-title">✅ No Site-Wide Algorithmic Penalty Detected</div></div>""", unsafe_allow_html=True)
 
         # === TAB 2: KEYWORD DECAY ALERTS ===
         with tab2:
             st.markdown("## Real-time Keyword Decay Alerts")
-            st.markdown("These keywords show stable search visibility (ranks and impressions are fine), but **clicks are dying**. This points directly to competitor snippet optimization, seasonal shifts, or search layout changes.")
-            
-            decay_queries = df_q[
-                (df_q['Clicks_Delta'] < 0) & 
-                (df_q['Impressions_Delta'] >= 0) & 
-                (df_q['Position_Delta'] <= 0.2)
-            ].sort_values(by='Clicks_Delta', ascending=True).head(15)
+            decay_queries = df_q[(df_q['Clicks_Delta'] < 0) & (df_q['Impressions_Delta'] >= 0) & (df_q['Position_Delta'] <= 0.2)].sort_values(by='Clicks_Delta', ascending=True).head(15)
 
             if not decay_queries.empty:
                 for idx, r in decay_queries.reset_index().iterrows():
-                    mapped_url = find_best_url_match(r, df_p)
+                    mapped_url, confident = find_best_url_match_precise(r, df_p)
+                    badge = '<span class="verified-tag">✓ Confident Match</span>' if confident else '<span class="warning-tag">⚠️ Low Token Match - Verify URL</span>'
                     st.markdown(f"""
                     *   🔴 **Keyword:** `{r['Queries']}`  
-                        *   **Current Rank:** {round(r['Position'], 1)} (Trend: {round(r['Position_Delta'], 2)})  
+                        *   **Current Rank:** {round(r['Position'], 1)}  
                         *   **Click Shift:** **{int(r['Clicks_Delta'])} clicks**  
-                        *   🎯 **Best Match URL:** `{mapped_url}`
-                        *   *Directive:* Overhaul this URL's meta title and description immediately.
-                    """)
-                st.markdown("""
-                <div class="url-helper-box">
-                    💡 <b>How to verify the exact URL in GSC:</b> Go to your Google Search Console performance report, click the <b>"Queries"</b> tab, click on your target keyword to filter by it, and then click the <b>"Pages"</b> tab.
-                </div>
-                """, unsafe_allow_html=True)
-            else:
-                st.info("No active keyword decay flags detected.")
+                        *   🎯 **Best Match URL:** `{mapped_url}` {badge}
+                    """, unsafe_allow_html=True)
 
         # === TAB 3: HIGH-VALUE CTR GAPS ===
         with tab3:
             st.markdown("## High-Value CTR Gaps (Page 1)")
-            st.markdown("These keywords rank on Page 1 but are receiving **abnormally low CTRs** compared to benchmark metrics. Fixing these will result in immediate traffic injections.")
-
             ctr_gaps_table = []
             for _, row in df_q[(df_q['Position'] <= 10.0) & (df_q['Impressions'] >= MIN_IMPR_THRESHOLD)].iterrows():
                 pos = max(1, min(10, int(round(row['Position']))))
@@ -447,39 +417,37 @@ if uploaded_file is not None:
                 if row['CTR'] < (benchmark * 0.7):
                     projected_clicks = (row['Impressions'] * (benchmark / 100)) - row['Clicks']
                     if projected_clicks > 5:
-                        mapped_url = find_best_url_match(row, df_p)
+                        mapped_url, confident = find_best_url_match_precise(row, df_p)
                         ctr_gaps_table.append({
                             "Keyword": row['Queries'],
                             "Rank": round(row['Position'], 1),
                             "Actual CTR": f"{round(row['CTR'], 1)}%",
                             "Target CTR": f"{round(benchmark, 1)}%",
                             "Click Loss": int(projected_clicks),
-                            "URL": mapped_url
+                            "URL": mapped_url,
+                            "Confident": confident
                         })
             
             if ctr_gaps_table:
                 sorted_gaps = sorted(ctr_gaps_table, key=lambda x: x['Click Loss'], reverse=True)[:15]
                 for idx, item in enumerate(sorted_gaps):
+                    badge = '<span class="verified-tag">✓ Confident Match</span>' if item['Confident'] else '<span class="warning-tag">⚠️ Verification Recommended via GSC</span>'
                     st.markdown(f"""
                     *   🎯 **Keyword:** `{item['Keyword']}` (Rank: **{item['Rank']}**)  
                         *   **Your CTR:** {item['Actual CTR']} *(Expected Benchmark: {item['Target CTR']})*  
-                        *   📉 **Estimated Loss:** **-{item['Click Loss']} Clicks** *(Difference between actual clicks and expected industry baseline clicks at Rank {item['Rank']})*
-                        *   🔗 **Target URL:** `{item['URL']}`
-                        *   *Directive:* Analyze competitor headers vs your metadata. Adjust the title/meta description on this URL.
-                    """)
+                        *   📉 **Estimated Loss:** **-{item['Click Loss']} Clicks** *(Baseline variant comparison)*
+                        *   🔗 **Target URL:** `{item['URL']}` {badge}
+                        *   *Directive:* Overhaul metadata optimization rules on this specific landing page.
+                    """, unsafe_allow_html=True)
                 st.markdown("""
                 <div class="url-helper-box">
-                    💡 <b>How to verify the exact URL in GSC:</b> Go to your Google Search Console performance report, click the <b>"Queries"</b> tab, click on your target keyword to filter by it, and then click the <b>"Pages"</b> tab.
+                    💡 <b>How to get 100% exact mappings:</b> If you notice complex local terms cross-bleeding, go into Google Search Console, filter by that specific query, click the <b>"Pages"</b> tab, and use that specific URL.
                 </div>
                 """, unsafe_allow_html=True)
-            else:
-                st.info("Your Page 1 CTR profiles are healthy and meeting benchmarks.")
 
         # === TAB 4: CANNIBALIZATION ===
         with tab4:
             st.markdown("## Search Intent & Cannibalization Clashes")
-            st.markdown("These are target queries where multiple URLs are ranking in close proximity, confusing search engines and dividing your organic authority.")
-
             cannibal_list = []
             candidates = df_q[df_q['Impressions'] >= MIN_IMPR_THRESHOLD].sort_values(by='Impressions', ascending=False).head(200)
             
@@ -512,51 +480,32 @@ if uploaded_file is not None:
                             })
 
             if cannibal_list:
-                unique_clashes = {v['Query']: v for v in cannibal_list}.values() # Dedup
+                unique_clashes = {v['Query']: v for v in cannibal_list}.values()
                 for item in list(unique_clashes)[:20]:
                     st.markdown(f"""
                     *   💥 **Query clash on:** `{item['Query']}`  
                         *   🥇 **Primary Page:** `{item['Primary URL']}` (Rank {item['Primary Rank']})  
                         *   🥈 **Competing Page:** `{item['Competing URL']}` (Rank {item['Competing Rank']})  
-                        *   *Directive:* De-optimize the competing page for this keyword. Consolidate them or point a hard internal link with descriptive anchor text from Page 2 to Page 1.
                     """)
-            else:
-                st.info("No active intent overlaps found across your high-impact keywords.")
 
         # === TAB 5: STRIKING DISTANCE QUICK WINS ===
         with tab5:
             st.markdown("## Striking Distance Quick Wins (Positions 11–15)")
-            st.markdown("These high-impression queries are hovering just off Page 1. They are ripe for an easy ranking boost via internal link building.")
-
             striking_kws = df_q[(df_q['Position'] >= 11.0) & (df_q['Position'] <= 15.0)].sort_values(by='Impressions', ascending=False).head(20)
 
             if not striking_kws.empty:
                 for idx, r in striking_kws.reset_index().iterrows():
-                    mapped_url = find_best_url_match(r, df_p)
+                    mapped_url, confident = find_best_url_match_precise(r, df_p)
+                    badge = '<span class="verified-tag">✓ Confident Match</span>' if confident else '<span class="warning-tag">⚠️ Verify Target Asset</span>'
                     st.markdown(f"""
                     *   🚀 **Keyword:** `{r['Queries']}`  
                         *   **Current Rank:** {round(r['Position'], 1)} | **Impressions:** {int(r['Impressions'])}  
-                        *   🔗 **Target Landing Page URL:** `{mapped_url}`  
-                        *   *Directive:* Locate 2-3 of your highest-authority articles and add an internal link pointing to this landing page URL using optimized anchor text.
-                    """)
-                st.markdown("""
-                <div class="url-helper-box">
-                    💡 <b>How to verify the exact URL in GSC:</b> Go to your Google Search Console performance report, click the <b>"Queries"</b> tab, click on your target keyword to filter by it, and then click the <b>"Pages"</b> tab.
-                </div>
-                """, unsafe_allow_html=True)
-            else:
-                st.info("No queries currently idling on Page 2 striking distance.")
+                        *   🔗 **Target Landing Page URL:** `{mapped_url}` {badge}
+                    """, unsafe_allow_html=True)
 
         # === TAB 6: EXECUTION BLUEPRINT ===
         with tab6:
             st.markdown("## Priority Implementation Blueprint")
-            st.markdown("""
-            Review the findings mapped across your diagnostic panels and prioritize your execution as follows:
-            
-            1. **Resolve Cannibalization Clashes (Tab 4):** Clear up intent conflicts first so Google knows exactly which URL to send ranking signals to.
-            2. **Optimize CTR Gaps (Tab 3):** Rewrite title tags and description snippets for those Page 1 terms showing high impressions but poor actual click rates. 
-            3. **Inject Striking Distance Authority (Tab 5):** Pass internal page authority (link equity) to your Page 2 assets to easily nudge them into Page 1 territory.
-            """)
-
+            st.markdown("Proceed with standard internal linking optimization protocols on high-confidence matched elements.")
     else:
-        st.error("❌ ZIP processing succeeded, but the code could not isolate the core 'Queries' or 'Pages' data frames. Please verify you are uploading an authentic zip download directly from the Google Search Console UI's Export function.")
+        st.error("❌ Data formatting processing configuration mismatch.")
