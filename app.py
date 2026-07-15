@@ -1,147 +1,159 @@
 import streamlit as st
 import pandas as pd
-from config import CSS_STYLING
-from utils import extract_gsc_zip
-from dashboard import render_dashboard
-from keyword_analysis import run_keyword_analysis
-from page_analysis import run_page_analysis
-from ctr_analysis import run_ctr_analysis
-from ranking_analysis import run_ranking_analysis
-from opportunities import map_cannibalization
-from ai_recommendations import generate_recommendations
-from charts import plot_top_losers, plot_ctr_vs_position
-from exports import compile_audit_workbook
+import numpy as np
+import io
+import zipfile
 
-# Inject core CSS styling
-st.markdown(CSS_STYLING, unsafe_allow_html=True)
+# Ensure dependencies are available
+try:
+    import xlsxwriter
+except ImportError:
+    import subprocess
+    import sys
+    subprocess.check_call([sys.executable, "-m", "pip", "install", "xlsxwriter"])
+    import xlsxwriter
 
-# Application Title
-st.title("🛡️ Enterprise GSC Audit and Analytics Engine")
-st.write("Professional Diagnostic Workspace | Max Rank Ceiling: 30 | Strict UTM Exclusions")
+# =========================================================================
+# 1. STYLE ENGINE & STYLING CONFIG
+# =========================================================================
+st.set_page_config(
+    page_title="GSC Performance Deficit",
+    page_icon="🎯",
+    layout="wide"
+)
 
-# Setup raw ZIP source dropzone
-uploaded_zip = st.file_uploader("Drop GSC Export Zip file to run diagnostics:", type=["zip"])
-
-if uploaded_zip is not None:
-    # Run data parsing
-    gsc_payload = extract_gsc_zip(uploaded_zip)
+st.markdown("""
+    <style>
+    .stApp { background-color: #fafafa; }
+    h1, h2, h3, h4 { color: #0f172a !important; font-family: monospace; }
     
-    if gsc_payload and 'Queries' in gsc_payload and 'Pages' in gsc_payload:
-        # Extract operational dataframes
-        df_q = gsc_payload['Queries']
-        df_p = gsc_payload['Pages']
+    .alert-banner {
+        background-color: #0f172a;
+        color: #ffffff;
+        padding: 20px;
+        border-radius: 8px;
+        font-family: monospace;
+        margin-bottom: 25px;
+        border-left: 6px solid #ef4444;
+    }
+    .alert-banner h2 { color: #ffffff !important; margin: 0 0 8px 0; }
+    .alert-banner p { color: #94a3b8; margin: 0; font-size: 0.95rem; }
+    
+    .metric-panel {
+        background-color: #ffffff;
+        border: 1px solid #e2e8f0;
+        border-radius: 6px;
+        padding: 16px;
+        text-align: center;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+    }
+    .metric-val { font-size: 1.8rem; font-weight: 700; color: #10b981; font-family: monospace; }
+    .metric-val.red-val { color: #ef4444; }
+    .metric-lbl { font-size: 0.8rem; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em; margin-top: 4px; }
+    </style>
+""", unsafe_allow_html=True)
+
+st.title("🎯 GSC Deficit Engine (Lightweight)")
+st.write("Clean SEO Data Processing | Positions $\le$ 30 Only | Excludes UTM Parameters")
+
+# =========================================================================
+# 2. DATA HARVESTING & CLEANING PIPELINE
+# =========================================================================
+def clean_and_normalize(df, dim_name):
+    df.columns = [col.strip() for col in df.columns]
+    target_col = next((col for col in df.columns if col.lower() in [
+        dim_name.lower(), 'query', 'page', 'device', 'country', 'top ' + dim_name.lower()
+    ]), None)
+    
+    if not target_col:
+        return None
         
-        # Render high level performance indices
-        render_dashboard(df_q, df_p)
+    norm = pd.DataFrame()
+    norm[dim_name] = df[target_col].astype(str).str.strip()
+    
+    # Scrub UTM tracked strings instantly
+    if dim_name == 'Pages':
+        norm = norm[~norm['Pages'].str.lower().str.contains('utm_|_utm|utm=', na=False)]
         
-        # Render multi-sheet download
-        cannibal_map = map_cannibalization(df_q, df_p)
-        xlsx_book = compile_audit_workbook(df_q, df_p, cannibal_map)
+    def find_and_parse(keywords, default=0.0):
+        col = next((c for c in df.columns if any(k in c.lower() for k in keywords) and 'difference' not in c.lower() and 'previous' not in c.lower()), None)
+        diff_col = next((c for c in df.columns if any(k in c.lower() for k in keywords) and 'difference' in c.lower()), None)
         
-        st.download_button(
-            label="💾 Download Complete Multi-Sheet XLSX Audit Package",
-            data=xlsx_book,
-            file_name="gsc_enterprise_performance_audit.xlsx",
-            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-        )
+        val = pd.to_numeric(df[col], errors='coerce').fillna(default) if col else pd.Series(default, index=df.index)
+        val_delta = pd.to_numeric(df[diff_col], errors='coerce').fillna(0.0) if diff_col else pd.Series(0.0, index=df.index)
+        return val, val_delta
+
+    norm['Clicks'], norm['Clicks_Delta'] = find_and_parse(['click'])
+    norm['Impressions'], norm['Impressions_Delta'] = find_and_parse(['impression'])
+    norm['Position'], norm['Position_Delta'] = find_and_parse(['position'], default=99.0)
+    
+    # Strict Position Cap
+    norm = norm[norm['Position'] <= 30.0]
+    return norm
+
+def extract_gsc_zip(uploaded_file):
+    parsed = {}
+    try:
+        with zipfile.ZipFile(uploaded_file) as z:
+            names = z.namelist()
+            mappings = {'Queries': 'queries.csv', 'Pages': 'pages.csv'}
+            for key, pattern in mappings.items():
+                matched = next((n for n in names if pattern in n.lower()), None)
+                if matched:
+                    with z.open(matched) as f:
+                        df = pd.read_csv(f)
+                        norm_df = clean_and_normalize(df, key)
+                        if norm_df is not None:
+                            parsed[key] = norm_df
+        return parsed
+    except Exception:
+        return None
+
+# =========================================================================
+# 3. INTERACTIVE LAYOUT & RENDER
+# =========================================================================
+uploaded_file = st.file_uploader("Upload GSC ZIP export:", type=["zip"])
+
+if uploaded_file is not None:
+    gsc = extract_gsc_zip(uploaded_file)
+    
+    if gsc and 'Queries' in gsc and 'Pages' in gsc:
+        df_q = gsc['Queries']
+        df_p = gsc['Pages']
         
-        # Create core application layout tabs
-        tab_kws, tab_pgs, tab_ctr, tab_ranks, tab_can, tab_directives = st.tabs([
-            "🔑 Keywords", "📄 Pages", "📉 CTR Gaps", "↕️ Rankings", "🎯 Cannibalization", "🤖 Directives"
-        ])
+        # Simple KPIs
+        total_clicks = int(df_q['Clicks'].sum())
+        total_impr = int(df_q['Impressions'].sum())
+        avg_pos = round(df_q['Position'].mean(), 1)
         
-        with tab_kws:
-            st.subheader("Query Audit Modules")
-            kw_results = run_keyword_analysis(df_q)
+        # Render Metrics
+        st.markdown(f"""
+        <div class="alert-banner">
+            <h2>📊 SITE VISIBILITY SNAPSHOT ($\le$ Position 30)</h2>
+            <p>Database processed. Campaign parameters removed automatically.</p>
+        </div>
+        """, unsafe_allow_html=True)
+        
+        c1, c2, c3 = st.columns(3)
+        with c1:
+            st.markdown(f'<div class="metric-panel"><div class="metric-val">{total_clicks:,}</div><div class="metric-lbl">Total Clicks</div></div>', unsafe_allow_html=True)
+        with c2:
+            st.markdown(f'<div class="metric-panel"><div class="metric-val">{total_impr:,}</div><div class="metric-lbl">Total Impressions</div></div>', unsafe_allow_html=True)
+        with c3:
+            st.markdown(f'<div class="metric-panel"><div class="metric-val">{avg_pos}</div><div class="metric-lbl">Average Position</div></div>', unsafe_allow_html=True)
             
-            c1, c2 = st.columns(2)
-            with c1:
-                st.write("#### Top Gaining Keywords")
-                st.dataframe(kw_results['gaining'].head(20), use_container_width=True)
-                st.write("#### New Keywords Discovered")
-                st.dataframe(kw_results['new'].head(20), use_container_width=True)
-            with c2:
-                st.write("#### Top Losing Keywords")
-                st.dataframe(kw_results['losing'].head(20), use_container_width=True)
-                st.write("#### Lost Keywords")
-                st.dataframe(kw_results['lost'].head(20), use_container_width=True)
-                
-            fig_losers = plot_top_losers(df_q)
-            if fig_losers:
-                st.plotly_chart(fig_losers, use_container_width=True)
-
-        with tab_pgs:
-            st.subheader("Landing Page Audit Modules")
-            pg_results = run_page_analysis(df_p)
+        st.markdown("<br/>", unsafe_allow_html=True)
+        
+        # Tabs for Raw Clean Data
+        tab_queries, tab_pages = st.tabs(["🔑 Active Queries", "📄 Clean Landing Pages"])
+        
+        with tab_queries:
+            st.subheader("Queries Ranking up to Position 30")
+            st.dataframe(df_q, use_container_width=True)
             
-            p1, p2 = st.columns(2)
-            with p1:
-                st.write("#### Top Gaining Pages")
-                st.dataframe(pg_results['gaining'].head(20), use_container_width=True)
-                st.write("#### Pages with Click Loss + Stable Rankings")
-                st.dataframe(pg_results['click_loss_stable_rank'].head(20), use_container_width=True)
-            with p2:
-                st.write("#### Top Losing Pages")
-                st.dataframe(pg_results['losing'].head(20), use_container_width=True)
-                st.write("#### Pages Needing Content Refresh")
-                st.dataframe(pg_results['refresh_needed'].head(20), use_container_width=True)
-
-        with tab_ctr:
-            st.subheader("Click Efficiency & CTR Deficits")
-            ctr_results = run_ctr_analysis(df_q)
+        with tab_pages:
+            st.subheader("Pages Ranking up to Position 30 (No UTMs)")
+            st.dataframe(df_p, use_container_width=True)
             
-            st.write("#### Expected CTR Deficits")
-            st.dataframe(ctr_results['ctr_gaps'].head(25), use_container_width=True)
-            
-            fig_dist = plot_ctr_vs_position(df_q)
-            if fig_dist:
-                st.plotly_chart(fig_dist, use_container_width=True)
-
-        with tab_ranks:
-            st.subheader("SERP Volatility & Positioning")
-            rank_results = run_ranking_analysis(df_q)
-            
-            r1, r2 = st.columns(2)
-            with r1:
-                st.write("#### Biggest Ranking Drop-offs")
-                st.dataframe(rank_results['drops'].head(20), use_container_width=True)
-                st.write("#### Strike Zone Keywords (Positions 2-3)")
-                st.dataframe(rank_results['near_first'].head(20), use_container_width=True)
-            with r2:
-                st.write("#### Biggest Ranking Improvements")
-                st.dataframe(rank_results['improvements'].head(20), use_container_width=True)
-                st.write("#### Edge of Page 1 Opportunities (Positions 11-15)")
-                st.dataframe(rank_results['near_page_one'].head(20), use_container_width=True)
-
-        with tab_can:
-            st.subheader("Keyword Cannibalization Audit Map")
-            if not cannibal_map.empty:
-                st.dataframe(cannibal_map.head(40), use_container_width=True)
-            else:
-                st.info("No query cannibalization mapped between positions 1 and 30.")
-
-        with tab_directives:
-            st.subheader("On-Board Algorithmic Audit Instructions")
-            ai_directives = generate_recommendations(df_q, df_p)
-            
-            d1, d2 = st.columns(2)
-            with d1:
-                st.markdown("""
-                <div style="background-color: #fef2f2; border-left: 5px solid #ef4444; padding: 15px; border-radius: 4px; margin-bottom: 20px;">
-                    <h4 style="margin:0 0 10px 0; color: #b91c1c;">📋 Content Refresh Worksheets</h4>
-                    <p style="font-size:0.9rem; color: #7f1d1d; margin:0;">These pages have dropping search traction and need immediate copy depth updates.</p>
-                </div>
-                """, unsafe_allow_html=True)
-                st.dataframe(ai_directives['recover_pages'][['Pages', 'Position', 'Clicks_Delta']], use_container_width=True)
-                
-            with d2:
-                st.markdown("""
-                <div style="background-color: #fffbeb; border-left: 5px solid #f59e0b; padding: 15px; border-radius: 4px; margin-bottom: 20px;">
-                    <h4 style="margin:0 0 10px 0; color: #b45309;">📑 Internal Link Acquisition Targets</h4>
-                    <p style="font-size:0.9rem; color: #78350f; margin:0;">These terms are on page 2. Send external internal links directly here to boost them to Page 1.</p>
-                </div>
-                """, unsafe_allow_html=True)
-                st.dataframe(ai_directives['internal_links'][['Queries', 'Position', 'Impressions']], use_container_width=True)
-
     else:
-        st.error("❌ Invalid GSC File Format. Please ensure queries.csv and pages.csv are included.")
+        st.error("❌ ZIP file must contain both 'queries.csv' and 'pages.csv'.")
