@@ -100,6 +100,37 @@ st.markdown("""
         color: #cbd5e1 !important;
     }
     
+    /* Clean CSS lists instead of ugly raw grids */
+    .data-list {
+        background-color: #1e293b;
+        border: 1px solid #334155;
+        border-radius: 8px;
+        padding: 15px 20px;
+        margin-bottom: 15px;
+    }
+    .data-item {
+        border-bottom: 1px solid #334155;
+        padding: 10px 0;
+    }
+    .data-item:last-child {
+        border-bottom: none;
+    }
+    .keyword-badge {
+        background-color: #38bdf8;
+        color: #0f172a;
+        padding: 2px 8px;
+        border-radius: 4px;
+        font-family: monospace;
+        font-weight: bold;
+    }
+    .url-badge {
+        background-color: #4f46e5;
+        color: #ffffff;
+        padding: 2px 8px;
+        border-radius: 4px;
+        font-family: monospace;
+    }
+    
     /* Explicit color for standard Streamlit text elements */
     .stMarkdown p, .stMarkdown span {
         color: #e2e8f0 !important;
@@ -134,20 +165,24 @@ cfg_col1, cfg_col2, cfg_col3 = st.columns(3)
 with cfg_col1:
     BRAND_TERM = st.text_input("Exclude Branded Searches (Default is Blank):", value="").lower().strip()
 with cfg_col2:
-    MIN_IMPR_THRESHOLD = st.number_input("Minimum Impressions Threshold:", min_value=1, value=150)
+    MIN_IMPR_THRESHOLD = st.number_input("Minimum Impressions Threshold:", min_value=1, value=100)
 with cfg_col3:
     MAX_CANNIBAL_OFFSET = st.slider("Cannibalization Search Space (Pos. Gap):", 1, 15, 6)
 
 st.markdown("---")
 
+# CTR Benchmark targets configuration
+CTR_BENCHMARKS = {
+    1: 30.0, 2: 15.0, 3: 10.0, 4: 7.0, 5: 5.0,
+    6: 4.0,  7: 3.0,  8: 2.5,  9: 2.0,  10: 1.5
+}
+for pos in range(11, 31):
+    CTR_BENCHMARKS[pos] = round(15.0 / pos, 2)
+
 # =========================================================================
 # DATA CLEANING ENGINE (ROBUST BYPASS FOR GSC HEADER METADATA)
 # =========================================================================
 def clean_gsc_csv(bytes_data):
-    """
-    Slices past GSC metadata header rows if they exist, 
-    finding the actual start of the data table.
-    """
     try:
         lines = bytes_data.decode('utf-8').splitlines()
     except UnicodeDecodeError:
@@ -156,26 +191,21 @@ def clean_gsc_csv(bytes_data):
         except Exception:
             return None
 
-    # Detect row index where real GSC columns start
     header_idx = 0
-    for idx, line in enumerate(lines[:15]):  # Google usually puts headers in first 10 rows
+    for idx, line in enumerate(lines[:15]):
         lower_line = line.lower()
-        # Look for typical CSV header identifiers
         if any(term in lower_line for term in ['query', 'queries', 'page', 'pages', 'clicks', 'impressions']):
             header_idx = idx
             break
             
-    # Read CSV skipping metadata headers
     try:
         df = pd.read_csv(io.StringIO("\n".join(lines[header_idx:])))
-        # Strip string whitespace from column headers
         df.columns = [str(c).strip() for c in df.columns]
         return df
     except Exception:
         return None
 
 def parse_gsc_sheet(df, dim_name):
-    # Match the target dimension column dynamically
     target_col = None
     if dim_name == 'Queries':
         target_col = next((c for c in df.columns if c.lower() in ['query', 'queries', 'top queries', 'top query', 'search query']), None)
@@ -228,7 +258,6 @@ def parse_gsc_sheet(df, dim_name):
         
     normalized['Position'], normalized['Position_Delta'] = extract_stats(['position'], default_val=99.0)
     
-    # Strictly scope to Page 1-3
     normalized = normalized[normalized['Position'] <= 30.0]
     return normalized
 
@@ -239,7 +268,6 @@ def extract_gsc_payload(uploaded_zip):
             file_names = z.namelist()
             
             for file_name in file_names:
-                # Ignore system metadata files inside ZIPs (like macOS __MACOSX)
                 if '__macosx' in file_name.lower() or not file_name.endswith('.csv'):
                     continue
                     
@@ -248,16 +276,13 @@ def extract_gsc_payload(uploaded_zip):
                     if raw_df is None or raw_df.empty:
                         continue
                     
-                    # Inspect column signatures of the CSV to classify the dataset
                     cols_lower = [str(c).lower() for c in raw_df.columns]
                     
-                    # Match Queries Dataset
                     if any(q_term in cols_lower for q_term in ['query', 'queries', 'top queries', 'top query', 'search query']):
                         clean_df = parse_gsc_sheet(raw_df, 'Queries')
                         if clean_df is not None and not clean_df.empty:
                             results['Queries'] = clean_df
                             
-                    # Match Pages Dataset
                     elif any(p_term in cols_lower for p_term in ['page', 'pages', 'top pages', 'top page', 'landing page', 'url']):
                         clean_df = parse_gsc_sheet(raw_df, 'Pages')
                         if clean_df is not None and not clean_df.empty:
@@ -283,10 +308,9 @@ if uploaded_file is not None:
         # Apply brand filter dynamically
         df_q = df_q_raw[~df_q_raw['Queries'].str.lower().str.contains(BRAND_TERM, na=False)].copy() if BRAND_TERM else df_q_raw.copy()
         
-        st.markdown("## 🔍 Algorithmic Investigation Results")
-        st.markdown("Below are the findings derived automatically by correlating mathematical trends across your Search Console datasets.")
-
-        # --- ALGORITHMIC DETECTOR 1: THE CORE UPDATE HIT DETECTOR ---
+        st.markdown("## 🔍 Active Algorithmic Detective Reports")
+        
+        # Calculate comparison trends
         losing_keys = df_q[df_q['Clicks_Delta'] < 0]
         gaining_keys = df_q[df_q['Clicks_Delta'] > 0]
         
@@ -297,6 +321,9 @@ if uploaded_file is not None:
         if total_lost_clicks > 0:
             core_hit_score = round((total_lost_clicks / (total_lost_clicks + total_gained_clicks + 1e-5)) * 100, 1)
 
+        # -----------------------------------------------------------------
+        # DETECTIVE MODULE 1: THE CORE UPDATE HIT DETECTOR
+        # -----------------------------------------------------------------
         if core_hit_score > 65.0:
             st.markdown(f"""
             <div class="directive-card danger">
@@ -327,34 +354,72 @@ if uploaded_file is not None:
             </div>
             """, unsafe_allow_html=True)
 
-        # --- ALGORITHMIC DETECTOR 2: SPAMBRAIN / CONTENT QUALITY CRITICAL FILTER ---
-        thin_content_candidates = df_p[
-            (df_p['Position_Delta'] > 1.0) & 
-            (df_p['Clicks_Delta'] < -10) & 
-            (df_p['Impressions_Delta'] >= 0)
-        ]
+        # -----------------------------------------------------------------
+        # DETECTIVE MODULE 2: DECAY RISK ALERTS (STABLE POSITIONS, FALLING CLICKS)
+        # -----------------------------------------------------------------
+        st.markdown("### 📉 Real-time Keyword Decay Alerts")
+        st.markdown("These keywords show stable search visibility (ranks and impressions are fine), but **clicks are dying**. This points directly to competitor snippet optimization, seasonal shifts, or search layout changes.")
         
-        if len(thin_content_candidates) > 0:
-            st.markdown(f"""
-            <div class="directive-card danger">
-                <div class="directive-title">🔴 SpamBrain & Helpful Content Classifier Risk: Detected on {len(thin_content_candidates)} Landing Page Paths</div>
-                <div class="directive-text">
-                    <b>Diagnostic:</b> Multi-metric divergence detected. Google is processing and rendering these pages in search results (Impressions are stable/increasing), but it is systematically shifting rankings downward (Positions are slipping and Clicks are plummeting). This matches the algorithmic behavior of automatic helpfulness classifiers.<br/>
-                    <b>Detective Action:</b> Review these landing pages immediately. Look for scaled AI generation, keyword stuffing in H2/H3 elements, and massive block quotes that do not answer the user query directly. Consolidate low-value pages of similar content into singular authoritative pillars.
-                </div>
-            </div>
-            """, unsafe_allow_html=True)
-        else:
-            st.markdown("""
-            <div class="directive-card success">
-                <div class="directive-title">🛡️ SpamBrain Classifier Health: Clean</div>
-                <div class="directive-text">
-                    <b>Diagnostic:</b> No content clusters show systemic impression-position divergence patterns. Google continues to index and rank your optimized content cleanly without triggering modern spam or helpful content filters.
-                </div>
-            </div>
-            """, unsafe_allow_html=True)
+        decay_queries = df_q[
+            (df_q['Clicks_Delta'] < 0) & 
+            (df_q['Impressions_Delta'] >= 0) & 
+            (df_q['Position_Delta'] <= 0.2)
+        ].sort_values(by='Clicks_Delta', ascending=True).head(15)
 
-        # --- ALGORITHMIC DETECTOR 3: THE INTENT COLLISION ENGINE (CANNIBALIZATION DETECTOR) ---
+        if not decay_queries.empty:
+            for idx, r in decay_queries.reset_index().iterrows():
+                st.markdown(f"""
+                *   🔴 **Keyword:** `{r['Queries']}`  
+                    *   **Current Rank:** {round(r['Position'], 1)} (Trend: {round(r['Position_Delta'], 2)})  
+                    *   **Click Shift:** **{int(r['Clicks_Delta'])} clicks**  
+                    *   *Directive:* Overhaul your meta titles and description snippets immediately. Competitors are out-clicking you on the SERP.
+                """)
+        else:
+            st.info("No active keyword decay flags detected.")
+
+        st.markdown("---")
+
+        # -----------------------------------------------------------------
+        # DETECTIVE MODULE 3: HIGH-VALUE CTR GAPS
+        # -----------------------------------------------------------------
+        st.markdown("### 📈 High-Value CTR Gaps (Page 1)")
+        st.markdown("These keywords rank on Page 1 but are receiving **abnormally low CTRs** compared to benchmark metrics. Fixing these will result in immediate traffic injections.")
+
+        ctr_gaps_table = []
+        for _, row in df_q[(df_q['Position'] <= 10.0) & (df_q['Impressions'] >= MIN_IMPR_THRESHOLD)].iterrows():
+            pos = max(1, min(10, int(round(row['Position']))))
+            benchmark = CTR_BENCHMARKS.get(pos, 1.0)
+            if row['CTR'] < (benchmark * 0.7):
+                projected_clicks = (row['Impressions'] * (benchmark / 100)) - row['Clicks']
+                if projected_clicks > 5:
+                    ctr_gaps_table.append({
+                        "Keyword": row['Queries'],
+                        "Rank": round(row['Position'], 1),
+                        "Actual CTR": f"{round(row['CTR'], 1)}%",
+                        "Target CTR": f"{round(benchmark, 1)}%",
+                        "Click Loss": int(projected_clicks)
+                    })
+        
+        if ctr_gaps_table:
+            sorted_gaps = sorted(ctr_gaps_table, key=lambda x: x['Click Loss'], reverse=True)[:15]
+            for idx, item in enumerate(sorted_gaps):
+                st.markdown(f"""
+                *   🎯 **Keyword:** `{item['Keyword']}` (Rank: **{item['Rank']}**)  
+                    *   **Your CTR:** {item['Actual CTR']} *(Expected Benchmark: {item['Target CTR']})*  
+                    *   **Estimated Loss:** **-{item['Click Loss']} Clicks**  
+                    *   *Directive:* Analyze competitor headers. Ensure your landing page cleanly targets the exact search intent.
+                """)
+        else:
+            st.info("Your Page 1 CTR profiles are healthy and meeting benchmarks.")
+
+        st.markdown("---")
+
+        # -----------------------------------------------------------------
+        # DETECTIVE MODULE 4: CANNIBALIZATION & INTENT CLASHES
+        # -----------------------------------------------------------------
+        st.markdown("### ⚔️ Search Intent & Cannibalization Clashes")
+        st.markdown("These are target queries where multiple URLs are ranking in close proximity, confusing search engines and dividing your organic authority.")
+
         cannibal_list = []
         candidates = df_q[df_q['Impressions'] >= MIN_IMPR_THRESHOLD].sort_values(by='Impressions', ascending=False).head(150)
         
@@ -366,82 +431,69 @@ if uploaded_file is not None:
                 (df_p['Position'] >= q_pos - MAX_CANNIBAL_OFFSET) & 
                 (df_p['Position'] <= q_pos + MAX_CANNIBAL_OFFSET) &
                 (df_p['Impressions'] >= MIN_IMPR_THRESHOLD / 2)
-            ]
+            ].sort_values(by=['Clicks', 'Impressions'], ascending=[False, False])
             
             if len(matching_urls) > 1:
                 primary_url = matching_urls.iloc[0]['Pages']
-                secondary_url = matching_urls.iloc[1]['Pages'] if len(matching_urls) > 1 else ""
-                if primary_url != secondary_url and secondary_url:
-                    cannibal_list.append(query_txt)
+                primary_pos = round(matching_urls.iloc[0]['Position'], 1)
+                
+                for sub_idx in range(1, min(len(matching_urls), 3)):
+                    sub_row = matching_urls.iloc[sub_idx]
+                    cannibal_url = sub_row['Pages']
+                    cannibal_pos = round(sub_row['Position'], 1)
+                    
+                    if cannibal_url != primary_url:
+                        cannibal_list.append({
+                            "Query": query_txt,
+                            "Primary URL": primary_url,
+                            "Primary Rank": primary_pos,
+                            "Competing URL": cannibal_url,
+                            "Competing Rank": cannibal_pos
+                        })
 
-        unique_cannibals = list(set(cannibal_list))
-        if len(unique_cannibals) > 5:
-            st.markdown(f"""
-            <div class="directive-card warning">
-                <div class="directive-title">⚔️ Search Intent Collision: High Volatility Confirmed ({len(unique_cannibals)} Overlapping Terms)</div>
-                <div class="directive-text">
-                    <b>Diagnostic:</b> Google's ranking engine is oscillating between multiple pages on your site to answer the same queries. This results in keyword cannibalization where both URLs compete, diluting link juice, anchor text equity, and CTR performance. <br/>
-                    <b>Detective Action:</b> De-optimize competing assets. Use precise anchor-text internal linking from the secondary page back to the primary canonical URL using the target term. If content overlaps significantly, 301-redirect or canonicalize the weaker page into the stronger page.
-                </div>
-            </div>
-            """, unsafe_allow_html=True)
+        if cannibal_list:
+            unique_clashes = {v['Query']: v for v in cannibal_list}.values() # Dedup
+            for item in list(unique_clashes)[:12]:
+                st.markdown(f"""
+                *   💥 **Query clash on:** `{item['Query']}`  
+                    *   🥇 **Primary Page:** `{item['Primary URL']}` (Rank {item['Primary Rank']})  
+                    *   🥈 **Competing Page:** `{item['Competing URL']}` (Rank {item['Competing Rank']})  
+                    *   *Directive:* De-optimize the competing page for this keyword. Consolidate them or point a hard internal link with descriptive anchor text from Page 2 to Page 1.
+                """)
         else:
-            st.markdown("""
-            <div class="directive-card success">
-                <div class="directive-title">🎯 Intent Targeting: Highly Focused</div>
-                <div class="directive-text">
-                    <b>Diagnostic:</b> Low intent collision across your GSC footprint. Google has a clear map of which URL is the absolute authority page for your primary organic keyword groups.
-                </div>
-            </div>
-            """, unsafe_allow_html=True)
+            st.info("No active intent overlaps found across your high-impact keywords.")
 
-        # --- ALGORITHMIC DETECTOR 4: SERP LAYOUT & PIXEL SHIFT DETECTOR (VISIBILITY GAP) ---
-        serp_layout_shifts = df_q[
-            (df_q['Position'] <= 8.0) & 
-            (df_q['Clicks_Delta'] < 0) & 
-            (df_q['Impressions_Delta'] >= 0) &
-            (df_q['CTR'] < 3.0)
-        ]
-        
-        if len(serp_layout_shifts) > 0:
-            st.markdown(f"""
-            <div class="directive-card info">
-                <div class="directive-title">👁️ SERP Landscape Displacement (Pixel-Shift Detected)</div>
-                <div class="directive-text">
-                    <b>Diagnostic:</b> Critical CTR degradation noticed on core keywords where you rank within the top 8 positions. Because impressions are stable, this signals that Google has altered the visual SERP layout (e.g., expanded AI Overviews, larger local packs, sponsored shopping feeds, or video carousels) forcing your result below the fold.<br/>
-                    <b>Detective Action:</b> Run manual searches for these queries. Assess if a competitor is optimizing for high-yield schema or if AI Summaries have displaced standard results. Re-engineer titles into questions, deploy custom structured data markup (Product, FAQ, or Schema tables), and target direct inclusion within generative answers.
-                </div>
-            </div>
-            """, unsafe_allow_html=True)
+        st.markdown("---")
+
+        # -----------------------------------------------------------------
+        # DETECTIVE MODULE 5: PAGE TWO STRIKING DISTANCE OPPORTUNITIES
+        # -----------------------------------------------------------------
+        st.markdown("### ⛓️ Striking Distance Quick Wins (Positions 11–15)")
+        st.markdown("These high-impression queries are hovering just off Page 1. They are ripe for an easy ranking boost via internal link building.")
+
+        striking_kws = df_q[(df_q['Position'] >= 11.0) & (df_q['Position'] <= 15.0)].sort_values(by='Impressions', ascending=False).head(12)
+
+        if not striking_kws.empty:
+            for idx, r in striking_kws.reset_index().iterrows():
+                st.markdown(f"""
+                *   🚀 **Keyword:** `{r['Queries']}`  
+                    *   **Current Rank:** {round(r['Position'], 1)} | **Impressions:** {int(r['Impressions'])}  
+                    *   *Directive:* Locate 2-3 of your highest-authority articles and add an internal link pointing to the landing page ranking for this keyword using optimized anchor text.
+                """)
         else:
-            st.markdown("""
-            <div class="directive-card success">
-                <div class="directive-title">✨ SERP Pixel Visibility: Safe</div>
-                <div class="directive-text">
-                    <b>Diagnostic:</b> Your high-ranking queries are converting at expected ratios relative to their position, showing no sign of pixel displacement or algorithmic crowding in the SERPs.
-                </div>
-            </div>
-            """, unsafe_allow_html=True)
+            st.info("No queries currently idling on Page 2 striking distance.")
 
-        # --- ALGORITHMIC DETECTOR 5: THE STRATEGIC NEXT-STEP DIRECTIVE ENGINE ---
-        st.markdown("## 📋 Execution Blueprint")
-        
-        striking_distance_kws = df_q[(df_q['Position'] >= 4.0) & (df_q['Position'] <= 12.0)].sort_values(by='Impressions', ascending=False).head(5)
-        
+        st.markdown("---")
+
+        # -----------------------------------------------------------------
+        # EXECUTION BLUEPRINT
+        # -----------------------------------------------------------------
+        st.markdown("## 📋 Priority Implementation Blueprint")
         st.markdown("""
-        To capture maximum organic traffic growth with minimal structural rebuilding, execute these specific directives on your domain immediately:
-        """)
-        
-        if not striking_distance_kws.empty:
-            st.markdown("### 🚀 Quick Win Internal Linking Directives")
-            for i, r in striking_distance_kws.reset_index().iterrows():
-                st.markdown(f"*   **Directive {i+1}:** Inject **2 to 3 targeted internal links** to the page ranking for keyword `{r['Queries']}` (Current Position: **{round(r['Position'], 1)}**). Use variations of the target term as anchor text across high-performing root pages.")
-        
-        st.markdown("### 🛠️ On-Page Semantic Updates")
-        st.markdown("""
-        *   **Optimize Heading Hierarchies:** Ensure your H1 perfectly matches search intent. Add concise answer paragraphs directly below H2 elements to win AI overview selections.
-        *   **Clean Up Schema:** Audit your structured data markup. Remove outdated microdata formatting to prevent crawling errors.
-        *   **Metadata Tuning:** For pages showing high impressions but low CTR, rewrite your meta title to sound compelling, addressing *why* a searcher should click on your result rather than relying on generative summaries.
+        Review the findings above and prioritize your optimization sprints as follows:
+        1. **Resolve Cannibalization Clashes:** Clear up intent conflicts first so Google knows exactly which URL to send ranking signals to.
+        2. **Optimize CTR Gaps:** Rewrite title tags and description snippets for those Page 1 terms showing high impressions but poor actual click rates. 
+        3. **Inject Striking Distance Authority:** Pass internal page authority (link equity) to your Page 2 assets to easily nudge them into Page 1 territory.
         """)
 
     else:
