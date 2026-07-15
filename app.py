@@ -141,13 +141,42 @@ with cfg_col3:
 st.markdown("---")
 
 # =========================================================================
-# DATA CLEANING ENGINE (CRITICAL FORENSIC PREPARATION)
+# DATA CLEANING ENGINE (ROBUST BYPASS FOR GSC HEADER METADATA)
 # =========================================================================
+def clean_gsc_csv(bytes_data):
+    """
+    Slices past GSC metadata header rows if they exist, 
+    finding the actual start of the data table.
+    """
+    try:
+        lines = bytes_data.decode('utf-8').splitlines()
+    except UnicodeDecodeError:
+        try:
+            lines = bytes_data.decode('latin-1').splitlines()
+        except Exception:
+            return None
+
+    # Detect row index where real GSC columns start
+    header_idx = 0
+    for idx, line in enumerate(lines[:15]):  # Google usually puts headers in first 10 rows
+        lower_line = line.lower()
+        if 'query' in lower_line or 'top queries' in lower_line or 'page' in lower_line or 'top pages' in lower_line:
+            header_idx = idx
+            break
+            
+    # Read CSV skipping metadata headers
+    try:
+        df = pd.read_csv(io.StringIO("\n".join(lines[header_idx:])))
+        return df
+    except Exception:
+        return None
+
 def parse_gsc_sheet(df, dim_name):
     df.columns = [c.strip() for c in df.columns]
     
+    # Track target column
     target_col = next((c for c in df.columns if c.lower() in [
-        dim_name.lower(), 'query', 'page', 'device', 'country', 'top query', 'top page'
+        dim_name.lower(), 'query', 'queries', 'page', 'pages', 'device', 'country', 'top query', 'top page'
     ]), None)
     
     if not target_col:
@@ -205,17 +234,30 @@ def extract_gsc_payload(uploaded_zip):
     try:
         with zipfile.ZipFile(uploaded_zip) as z:
             file_names = z.namelist()
-            mappings = {'Queries': 'queries.csv', 'Pages': 'pages.csv'}
-            for key, pattern in mappings.items():
-                matched_file = next((n for n in file_names if pattern in n.lower()), None)
-                if matched_file:
-                    with z.open(matched_file) as f:
-                        raw_df = pd.read_csv(f)
-                        clean_df = parse_gsc_sheet(raw_df, key)
+            
+            # Map queries and pages using case-insensitive search
+            queries_file = next((n for n in file_names if 'queries.csv' in n.lower() or 'query.csv' in n.lower()), None)
+            pages_file = next((n for n in file_names if 'pages.csv' in n.lower() or 'page.csv' in n.lower()), None)
+            
+            if queries_file:
+                with z.open(queries_file) as f:
+                    raw_df = clean_gsc_csv(f.read())
+                    if raw_df is not None:
+                        clean_df = parse_gsc_sheet(raw_df, 'Queries')
                         if clean_df is not None:
-                            results[key] = clean_df
+                            results['Queries'] = clean_df
+            
+            if pages_file:
+                with z.open(pages_file) as f:
+                    raw_df = clean_gsc_csv(f.read())
+                    if raw_df is not None:
+                        clean_df = parse_gsc_sheet(raw_df, 'Pages')
+                        if clean_df is not None:
+                            results['Pages'] = clean_df
+                            
             return results
-    except Exception:
+    except Exception as e:
+        st.error(f"Error reading ZIP: {str(e)}")
         return None
 
 # =========================================================================
@@ -237,7 +279,6 @@ if uploaded_file is not None:
         st.markdown("Below are the findings derived automatically by correlating mathematical trends across your Search Console datasets.")
 
         # --- ALGORITHMIC DETECTOR 1: THE CORE UPDATE HIT DETECTOR ---
-        # Look for systemic multi-keyword drops or core shifts
         losing_keys = df_q[df_q['Clicks_Delta'] < 0]
         gaining_keys = df_q[df_q['Clicks_Delta'] > 0]
         
@@ -279,7 +320,6 @@ if uploaded_file is not None:
             """, unsafe_allow_html=True)
 
         # --- ALGORITHMIC DETECTOR 2: SPAMBRAIN / CONTENT QUALITY CRITICAL FILTER ---
-        # Detect pages gaining impressions but crashing in clicks and position, indicating thin content classifiers
         thin_content_candidates = df_p[
             (df_p['Position_Delta'] > 1.0) & 
             (df_p['Clicks_Delta'] < -10) & 
@@ -307,7 +347,6 @@ if uploaded_file is not None:
             """, unsafe_allow_html=True)
 
         # --- ALGORITHMIC DETECTOR 3: THE INTENT COLLISION ENGINE (CANNIBALIZATION DETECTOR) ---
-        # Cross-reference query variations with multiple pages vying for attention
         cannibal_list = []
         candidates = df_q[df_q['Impressions'] >= MIN_IMPR_THRESHOLD].sort_values(by='Impressions', ascending=False).head(150)
         
@@ -349,7 +388,6 @@ if uploaded_file is not None:
             """, unsafe_allow_html=True)
 
         # --- ALGORITHMIC DETECTOR 4: SERP LAYOUT & PIXEL SHIFT DETECTOR (VISIBILITY GAP) ---
-        # High impressions, high rankings, but dramatic loss of CTR. 
         serp_layout_shifts = df_q[
             (df_q['Position'] <= 8.0) & 
             (df_q['Clicks_Delta'] < 0) & 
@@ -380,10 +418,8 @@ if uploaded_file is not None:
         # --- ALGORITHMIC DETECTOR 5: THE STRATEGIC NEXT-STEP DIRECTIVE ENGINE ---
         st.markdown("## 📋 Execution Blueprint")
         
-        # Pull striking distance for immediate quick wins
         striking_distance_kws = df_q[(df_q['Position'] >= 4.0) & (df_q['Position'] <= 12.0)].sort_values(by='Impressions', ascending=False).head(5)
         
-        # Build immediate list-style strategic recommendations based on current findings
         st.markdown("""
         To capture maximum organic traffic growth with minimal structural rebuilding, execute these specific directives on your domain immediately:
         """)
@@ -401,4 +437,4 @@ if uploaded_file is not None:
         """)
 
     else:
-        st.error("❌ The uploaded ZIP file does not contain compatible 'queries.csv' and 'pages.csv' datasets.")
+        st.error("❌ ZIP processing succeeded, but the code could not isolate the core 'Queries' or 'Pages' data frames. Please verify you are uploading an authentic zip download directly from the Google Search Console UI's Export function.")
