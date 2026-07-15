@@ -14,7 +14,7 @@ except ImportError:
     import xlsxwriter
 
 # =========================================================================
-# 1. PREMIUM HIGH-CONTRAST STYLE ENGINE
+# 1. HIGH-CONTRAST THEME ENGINE
 # =========================================================================
 st.set_page_config(
     page_title="Enterprise GSC Forensic Hub",
@@ -22,71 +22,60 @@ st.set_page_config(
     layout="wide"
 )
 
-# Custom premium stylesheet injection for rich typography and high-contrast tables
+# Custom premium stylesheet injection for absolute readability & beautiful typography
 st.markdown("""
     <style>
-    /* Force high-visibility light background for content area */
+    /* High-visibility page background */
     .stApp { 
-        background-color: #f8fafc !important; 
+        background-color: #f1f5f9 !important; 
     }
     
-    /* Global Typography Styling - Jet-black headings for absolute readability */
+    /* Global Typography - Jet-black headings for crisp legibility */
     h1, h2, h3, h4, h5, h6 { 
         color: #0f172a !important; 
         font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
         font-weight: 800 !important;
-        letter-spacing: -0.025em;
-        margin-top: 10px !important;
+        letter-spacing: -0.02em;
     }
     
-    /* Dark Slate Executive Header Block */
+    /* Ocean Blue Executive Header */
     .hero-banner {
-        background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+        background: linear-gradient(135deg, #1e3a8a 0%, #0f172a 100%);
         color: #ffffff !important;
-        padding: 36px;
+        padding: 30px;
         border-radius: 12px;
         font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-        margin-bottom: 30px;
-        box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
-        border-left: 6px solid #6366f1;
+        margin-bottom: 25px;
+        box-shadow: 0 4px 12px rgba(15, 23, 42, 0.15);
+        border-left: 6px solid #3b82f6;
     }
     .hero-banner h1 { 
         color: #ffffff !important; 
-        margin: 0 0 10px 0 !important; 
-        font-size: 2.2rem !important; 
+        margin: 0 0 8px 0 !important; 
+        font-size: 2rem !important; 
     }
     .hero-banner p { 
-        color: #cbd5e1 !important; 
+        color: #93c5fd !important; 
         margin: 0; 
-        font-size: 1.05rem; 
+        font-size: 1rem; 
         line-height: 1.5; 
         font-weight: 400;
     }
     
-    /* Config Panel Section Styling */
-    .config-card {
-        background-color: #ffffff;
-        border: 2px solid #cbd5e1;
-        border-radius: 12px;
-        padding: 24px;
-        margin-bottom: 30px;
-        box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);
-    }
-    
-    /* High-Contrast Dynamic Performance Metric Grid */
+    /* High-Contrast KPI Cards */
     .kpi-container {
         display: grid;
         grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
         gap: 20px;
-        margin-bottom: 30px;
+        margin-bottom: 25px;
     }
     
     .kpi-card {
         background-color: #ffffff;
-        border: 2px solid #e2e8f0;
+        border: 2px solid #cbd5e1;
         border-radius: 12px;
         padding: 24px;
-        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+        box-shadow: 0 2px 4px rgba(0,0,0,0.02);
         text-align: center;
     }
     
@@ -94,7 +83,7 @@ st.markdown("""
         font-size: 2.2rem; 
         font-weight: 800; 
         color: #0f172a !important; 
-        font-family: "SF Mono", "Courier New", monospace; 
+        font-family: "SF Mono", monospace; 
         line-height: 1.1;
     }
     .kpi-val.positive { color: #059669 !important; }
@@ -110,29 +99,29 @@ st.markdown("""
         font-weight: 700;
     }
     
-    /* Action / Warning Directives Cards */
+    /* Action & Warning Banners */
     .risk-banner {
-        background-color: #fffbeb;
-        border: 1px solid #fde68a;
+        background-color: #fef3c7;
+        border: 1px solid #fcd34d;
         border-left: 6px solid #d97706;
-        padding: 20px;
+        padding: 16px;
         border-radius: 8px;
-        margin-bottom: 20px;
+        margin-bottom: 15px;
     }
-    .risk-banner h4 { color: #92400e !important; margin: 0 0 6px 0 !important; font-size: 1.1rem !important; }
-    .risk-banner p { color: #78350f !important; margin: 0; font-size: 0.95rem; font-weight: 500; }
+    .risk-banner h4 { color: #78350f !important; margin: 0 0 6px 0 !important; font-size: 1.05rem !important; }
+    .risk-banner p { color: #92400e !important; margin: 0; font-size: 0.9rem; font-weight: 500; }
 
-    /* Streamlit Interactive Component Cleanups */
+    /* Streamlit Interactive Component Restyling */
     .stTabs [data-baseweb="tab-list"] {
         gap: 8px;
-        background-color: #e2e8f0;
+        background-color: #cbd5e1;
         padding: 8px;
         border-radius: 10px;
     }
     .stTabs [data-baseweb="tab"] {
         background-color: transparent;
         border-radius: 8px;
-        color: #334155 !important;
+        color: #1e293b !important;
         padding: 10px 20px;
         font-weight: 700 !important;
         font-size: 0.95rem;
@@ -140,16 +129,11 @@ st.markdown("""
     .stTabs [aria-selected="true"] {
         background-color: #ffffff !important;
         color: #0f172a !important;
-        box-shadow: 0 4px 6px -1px rgba(0,0,0,0.08);
+        box-shadow: 0 2px 4px rgba(0,0,0,0.05);
     }
     
-    /* Explicit High-Contrast Dataframe text tweaks */
-    div[data-testid="stDataFrame"] table {
-        color: #0f172a !important;
-    }
-    
-    /* High-contrast labels for inputs */
-    label[data-testid="stWidgetLabel"] p {
+    /* Force visible labels for input controls */
+    div[data-testid="stWidgetLabel"] p {
         color: #0f172a !important;
         font-weight: 700 !important;
         font-size: 0.95rem !important;
@@ -166,19 +150,20 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # =========================================================================
-# 2. INLINE CONFIGURATION BOARD (REPLACED SIDEBAR)
+# 2. INLINE CONFIGURATION BOARD (NATIVE RENDERING FOR PERFECT VISIBILITY)
 # =========================================================================
 st.markdown("### ⚙️ Engine Control Panel")
-with st.container():
-    st.markdown('<div class="config-card">', unsafe_allow_html=True)
-    cfg_col1, cfg_col2, cfg_col3 = st.columns(3)
-    with cfg_col1:
-        BRAND_TERM = st.text_input("Exclude Branded Searches:", value="botoxie").lower().strip()
-    with cfg_col2:
-        MIN_IMPR_THRESHOLD = st.number_input("Minimum Impressions Threshold:", min_value=1, value=100)
-    with cfg_col3:
-        MAX_CANNIBAL_OFFSET = st.slider("Cannibalization Search Space (Pos. Gap):", 1, 15, 8)
-    st.markdown('</div>', unsafe_allow_html=True)
+
+# Render native Streamlit input blocks directly to avoid styling overrides hiding elements
+cfg_col1, cfg_col2, cfg_col3 = st.columns(3)
+with cfg_col1:
+    BRAND_TERM = st.text_input("Exclude Branded Searches (Default is Blank):", value="").lower().strip()
+with cfg_col2:
+    MIN_IMPR_THRESHOLD = st.number_input("Minimum Impressions Threshold:", min_value=1, value=100)
+with cfg_col3:
+    MAX_CANNIBAL_OFFSET = st.slider("Cannibalization Search Space (Pos. Gap):", 1, 15, 8)
+
+st.markdown("---")
 
 # CTR Benchmark targets configuration
 CTR_BENCHMARKS = {
