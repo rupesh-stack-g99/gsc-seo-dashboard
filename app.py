@@ -18,8 +18,8 @@ except ImportError:
 # PREMIUM MIDNIGHT DARK THEME ENGINE
 # =========================================================================
 st.set_page_config(
-    page_title="Algorithmic SEO Detective",
-    page_icon="🤖",
+    page_title="GSC Forensic Overview",
+    page_icon="🕵️",
     layout="wide"
 )
 
@@ -39,13 +39,13 @@ st.markdown("""
     }
     
     .hero-banner {
-        background: linear-gradient(135deg, #1e3a8a 0%, #312e81 100%);
+        background: linear-gradient(135deg, #1e1b4b 0%, #312e81 100%);
         color: #ffffff !important;
         padding: 30px;
         border-radius: 12px;
         margin-bottom: 25px;
         box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3);
-        border-left: 6px solid #3b82f6;
+        border-left: 6px solid #6366f1;
     }
     .hero-banner h1 { 
         color: #ffffff !important; 
@@ -53,7 +53,7 @@ st.markdown("""
         font-size: 2.2rem !important; 
     }
     .hero-banner p { 
-        color: #93c5fd !important; 
+        color: #c7d2fe !important; 
         margin: 0; 
         font-size: 1.05rem; 
         line-height: 1.5; 
@@ -101,6 +101,14 @@ st.markdown("""
     }
     button[aria-selected="true"] {
         color: #38bdf8 !important;
+    }
+
+    .upload-requirements-box {
+        background-color: #1e1b4b;
+        border: 2px dashed #4f46e5;
+        border-radius: 8px;
+        padding: 20px;
+        margin-bottom: 25px;
     }
 
     .url-helper-box {
@@ -153,10 +161,29 @@ st.markdown("""
 
 st.markdown("""
 <div class="hero-banner">
-    <h1>🕵️ Algorithmic SEO Detective (High-Precision Edition)</h1>
-    <p>This upgraded release uses hard semantic scoring filters to map keywords to exact core landing page slugs, identifying mismatched intents with a dual-validation visibility toggle.</p>
+    <h1>🕵️ GSC Forensic Overview & Diagnostic Engine</h1>
+    <p>Algorithmic search monitoring and semantic intent mapping designed to isolate high-value search discrepancies.</p>
 </div>
 """, unsafe_allow_html=True)
+
+# =========================================================================
+# APPLICATION DESCRIPTION (WHAT IT DOES & WHAT IT FINDS)
+# =========================================================================
+st.markdown("""
+## ⚙️ Forensic Capability & Core Functionality
+
+This application serves as an automated search intelligence auditor that processes raw, multi-dimensional Google Search Console data structures. It replaces time-consuming spreadsheet lookups with high-precision algorithmic auditing:
+
+* **What it does:** It cleanses, parses, and cross-references multi-dimensional performance sets (Queries and Pages) via a high-precision semantic matching algorithm.
+* **What it finds:**
+    * **Systemic Core Update Impact:** Calculates the exact balance of search term decay vs. growth to flag potential sitewide algorithmic updates.
+    * **Hidden Keyword Decay:** Pinpoints queries losing substantial click-through metrics while keeping stable impression scores.
+    * **High-Value Page 1 CTR Gaps:** Detects terms ranking on Page 1 that are performing below natural CTR curves, isolating traffic loss.
+    * **Keyword Cannibalization Clashes:** Flags competing internal landing pages ranking for identical search terms.
+    * **Striking-Distance Quick Wins:** Finds queries hovering on the cusp of page one (positions 11–15) with high impressions.
+""")
+
+st.markdown("---")
 
 # =========================================================================
 # CONFIGURATION INPUTS
@@ -171,11 +198,12 @@ with cfg_col2:
 with cfg_col3:
     MAX_CANNIBAL_OFFSET = st.slider("Cannibalization Search Space (Pos. Gap):", 1, 15, 6)
 
-# Filter out lower confidence tags to isolate structural elements
-STRICT_MODE = st.checkbox("Show '✓ Confident Match' only (hide unverified warnings)", value=False)
+# FIXED: Default is False (hides unverified matches). Checking this toggle will show unverified ones.
+SHOW_UNVERIFIED = st.checkbox("🔍 Include unverified matches (low semantic token overlap)", value=False)
 
 st.markdown("---")
 
+# CTR Reference Curve
 CTR_BENCHMARKS = {
     1: 30.0, 2: 15.0, 3: 10.0, 4: 7.0, 5: 5.0,
     6: 4.0,  7: 3.0,  8: 2.5,  9: 2.0,  10: 1.5
@@ -321,14 +349,6 @@ def find_best_url_match_precise(query_row, df_pages, max_offset=6.0):
             
     return best_url if best_url else "Manual GSC Check Required", is_highly_confident
 
-def get_badge_html(confident, strict_mode, fallback_text="⚠️ Low Token Match - Verify URL"):
-    """Helper dynamic HTML rendering block configuration engine"""
-    if confident:
-        return '<span class="verified-tag">✓ Confident Match</span>'
-    elif not strict_mode:
-        return f'<span class="warning-tag">{fallback_text}</span>'
-    return ''
-
 def extract_gsc_payload(uploaded_zip):
     results = {}
     try:
@@ -356,10 +376,26 @@ def extract_gsc_payload(uploaded_zip):
         return None
 
 # =========================================================================
+# REQUIRED EXPORT INSTRUCTIONS & FILE UPLOADER
+# =========================================================================
+st.markdown("""
+<div class="upload-requirements-box">
+    <h3 style="margin-top:0; color:#a5b4fc !important;">⚠️ GSC Export Requirement Checklist</h3>
+    <p style="margin-bottom:8px; font-size:0.95rem;">To construct comparative trend diagnostics, you must upload the <b>unzipped raw export zip</b> directly generated by Google Search Console:</p>
+    <ul style="margin-top:0; margin-bottom:0; font-size:0.95rem; line-height: 1.6;">
+        <li>Go to Google Search Console performance menu.</li>
+        <li>Set your Date filter range to: <b>Compare last 3 months to previous period</b>.</li>
+        <li>Click the <b>Export</b> button in the top right corner and choose <b>Download ZIP</b>.</li>
+        <li>Upload that unaltered ZIP archive below.</li>
+    </ul>
+</div>
+""", unsafe_allow_html=True)
+
+uploaded_file = st.file_uploader("Upload GSC ZIP Archive here:", type=["zip"])
+
+# =========================================================================
 # FORENSIC PIPELINE EXECUTION
 # =========================================================================
-uploaded_file = st.file_uploader("Upload GSC ZIP file to begin automated diagnostics:", type=["zip"])
-
 if uploaded_file is not None:
     gsc = extract_gsc_payload(uploaded_file)
     
@@ -409,13 +445,16 @@ if uploaded_file is not None:
             if not decay_queries.empty:
                 for idx, r in decay_queries.reset_index().iterrows():
                     mapped_url, confident = find_best_url_match_precise(r, df_p)
-                    badge = get_badge_html(confident, STRICT_MODE)
-                    st.markdown(f"""
-                    *   🔴 **Keyword:** `{r['Queries']}`  
-                        *   **Current Rank:** {round(r['Position'], 1)}  
-                        *   **Click Shift:** **{int(r['Clicks_Delta'])} clicks**  
-                        *   🎯 **Best Match URL:** `{mapped_url}` {badge}
-                    """, unsafe_allow_html=True)
+                    
+                    # Logic implementation: Only show if confident, OR if SHOW_UNVERIFIED is enabled.
+                    if confident or SHOW_UNVERIFIED:
+                        badge = '<span class="verified-tag">✓ Confident Match</span>' if confident else '<span class="warning-tag">⚠️ Low Token Match - Verify URL</span>'
+                        st.markdown(f"""
+                        *   🔴 **Keyword:** `{r['Queries']}`  
+                            *   **Current Rank:** {round(r['Position'], 1)}  
+                            *   **Click Shift:** **{int(r['Clicks_Delta'])} clicks**  
+                            *   🎯 **Best Match URL:** `{mapped_url}` {badge}
+                        """, unsafe_allow_html=True)
 
         # === TAB 3: HIGH-VALUE CTR GAPS ===
         with tab3:
@@ -444,14 +483,18 @@ if uploaded_file is not None:
             if ctr_gaps_table:
                 sorted_gaps = sorted(ctr_gaps_table, key=lambda x: x['Click Loss'], reverse=True)[:15]
                 for idx, item in enumerate(sorted_gaps):
-                    badge = get_badge_html(item['Confident'], STRICT_MODE, fallback_text="⚠️ Verification Recommended via GSC")
-                    st.markdown(f"""
-                    *   🎯 **Keyword:** `{item['Keyword']}` (Rank: **{item['Rank']}**)  
-                        *   **Your CTR:** {item['Actual CTR']} *(Expected Benchmark: {item['Target CTR']})*  
-                        *   📉 **Estimated Loss:** **-{item['Click Loss']} Clicks** *(Baseline variant comparison)*
-                        *   🔗 **Target URL:** `{item['URL']}` {badge}
-                        *   *Directive:* Overhaul metadata optimization rules on this specific landing page.
-                    """, unsafe_allow_html=True)
+                    confident = item['Confident']
+                    
+                    # Logic implementation: Only show if confident, OR if SHOW_UNVERIFIED is enabled.
+                    if confident or SHOW_UNVERIFIED:
+                        badge = '<span class="verified-tag">✓ Confident Match</span>' if confident else '<span class="warning-tag">⚠️ Verification Recommended via GSC</span>'
+                        st.markdown(f"""
+                        *   🎯 **Keyword:** `{item['Keyword']}` (Rank: **{item['Rank']}**)  
+                            *   **Your CTR:** {item['Actual CTR']} *(Expected Benchmark: {item['Target CTR']})*  
+                            *   📉 **Estimated Loss:** **-{item['Click Loss']} Clicks** *(Baseline variant comparison)*
+                            *   🔗 **Target URL:** `{item['URL']}` {badge}
+                            *   *Directive:* Overhaul metadata optimization rules on this specific landing page.
+                        """, unsafe_allow_html=True)
                 st.markdown("""
                 <div class="url-helper-box">
                     💡 <b>How to get 100% exact mappings:</b> If you notice complex local terms cross-bleeding, go into Google Search Console, filter by that specific query, click the <b>"Pages"</b> tab, and use that specific URL.
@@ -515,12 +558,15 @@ if uploaded_file is not None:
             if not striking_kws.empty:
                 for idx, r in striking_kws.reset_index().iterrows():
                     mapped_url, confident = find_best_url_match_precise(r, df_p)
-                    badge = get_badge_html(confident, STRICT_MODE, fallback_text="⚠️ Verify Target Asset")
-                    st.markdown(f"""
-                    *   🚀 **Keyword:** `{r['Queries']}`  
-                        *   **Current Rank:** {round(r['Position'], 1)} | **Impressions:** {int(r['Impressions'])}  
-                        *   🔗 **Target Landing Page URL:** `{mapped_url}` {badge}
-                    """, unsafe_allow_html=True)
+                    
+                    # Logic implementation: Only show if confident, OR if SHOW_UNVERIFIED is enabled.
+                    if confident or SHOW_UNVERIFIED:
+                        badge = '<span class="verified-tag">✓ Confident Match</span>' if confident else '<span class="warning-tag">⚠️ Verify Target Asset</span>'
+                        st.markdown(f"""
+                        *   🚀 **Keyword:** `{r['Queries']}`  
+                            *   **Current Rank:** {round(r['Position'], 1)} | **Impressions:** {int(r['Impressions'])}  
+                            *   🔗 **Target Landing Page URL:** `{mapped_url}` {badge}
+                        """, unsafe_allow_html=True)
 
         # === TAB 6: EXECUTION BLUEPRINT ===
         with tab6:
