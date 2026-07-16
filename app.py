@@ -379,10 +379,6 @@ def find_best_url_match_precise(query_row, df_pages, max_offset=6.0):
 # BACKEND HELPER: COMPLETE-SENTENCE SEO RECOMMENDATION ENGINE
 # -------------------------------------------------------------------------
 def generate_seo_recommendations(page_url, keywords):
-    """
-    Generates high-impact meta tags and on-page assets as complete, natural sentences.
-    Never cuts text off with dots (...) inside fields.
-    """
     clean_topic = page_url.split('/')[-2] if page_url.endswith('/') else page_url.split('/')[-1]
     clean_topic = clean_topic.replace('-', ' ').replace('_', ' ').title()
     if not clean_topic or clean_topic == "":
@@ -391,8 +387,7 @@ def generate_seo_recommendations(page_url, keywords):
     primary_kw = keywords[0].title() if len(keywords) > 0 else "Our Treatments"
     secondary_kws = ", ".join([k.lower() for k in keywords[1:3]]) if len(keywords) > 1 else ""
     
-    # --- NO-DOT METAS GENERATOR ---
-    # Smart structural fallback variations strictly under 60 characters
+    # Structural fallback variations strictly under 60 characters (and ending cleanly!)
     opts_title = [
         f"{primary_kw} in Oak Brook | Custom Restorative Services",
         f"{primary_kw} Treatment | Restorative Skincare Specialists",
@@ -401,7 +396,7 @@ def generate_seo_recommendations(page_url, keywords):
     ]
     meta_title = next((opt for opt in opts_title if len(opt) <= 60), opts_title[-1])
         
-    # Smart dynamic descriptions strictly under 160 characters
+    # Structural fallback descriptions strictly under 160 characters
     desc_p1 = f"Experience premium {primary_kw.lower()} designed to restore youthful, natural volume."
     desc_p2 = f" Discover customized {primary_kw.lower()} solutions today."
     
@@ -410,7 +405,6 @@ def generate_seo_recommendations(page_url, keywords):
     else:
         meta_desc = desc_p1
         
-    # On-page elements
     h1_tag = f"Natural {primary_kw} Treatments"
     h2_tag = f"Restore Youthful Volume with Custom {primary_kw}"
     
@@ -499,10 +493,30 @@ if uploaded_file is not None:
             st.markdown("""
             *This diagnostic analysis measures the systemic stability of the organic profile. By evaluating global ratios of decaying keywords against ascending terms, it assesses whether traffic contractions point toward site-wide algorithmic suppression or minor seasonal turbulence.*
             """)
+            
             if core_hit_score > 65.0:
                 st.markdown(f"""<div class="directive-card danger"><div class="directive-title">🚨 Systemic Algorithmic Suppression Flagged ({core_hit_score}% Probability)</div></div>""", unsafe_allow_html=True)
             else:
-                st.markdown("""<div class="directive-card success"><div class="directive-title">✅ No Site-Wide Algorithmic Penalty Detected</div></div>""", unsafe_allow_html=True)
+                st.markdown(f"""<div class="directive-card success"><div class="directive-title">✅ No Site-Wide Algorithmic Penalty Detected ({core_hit_score}% Probability)</div></div>""", unsafe_allow_html=True)
+            
+            # --- NEW SIMPLIFIED DETAILED EXPLANATION CARD ---
+            st.markdown("""
+            ### 💡 What does this score actually mean? (Simple Explanation)
+            
+            Think of this score as a **site-wide organic health check**. Instead of just looking at your total traffic drops, this checker analyzes the **overall trend balance** across all your ranking keywords.
+            
+            #### 1. How is this score calculated?
+            When Google updates its algorithm, thousands of your keywords will move up or down. The tool groups all these changes:
+            * **Losing Keywords:** We add up all lost clicks across queries that dropped.
+            * **Gaining Keywords:** We add up all gained clicks across queries that grew.
+            * **The Ratio:** We calculate the percentage of total movement that is negative. For example, if **84.2%** of all moving keywords on your site are dropping, your score is **84.2%**.
+            
+            #### 2. Why is a score above 65% a warning?
+            * **Under 65% (Healthy Fluctuation):** It is completely normal for some pages to lose clicks due to seasonality, competitor changes, or minor content decay while other pages grow.
+            * **Above 65% (Algorithmic Suppression Warning):** If more than 65% of your keyword movements are drops, it proves that the drop isn't just a localized issue on a single page. It means **Google's core algorithm has likely made a site-wide adjustment** to how it evaluates your brand's authority, trust, or relevance.
+            
+            ---
+            """)
 
         # === TAB 2: KEYWORD DECAY ALERTS ===
         with tab2:
@@ -644,9 +658,8 @@ if uploaded_file is not None:
             *This dashboard isolates top-decaying URLs by scanning **all GSC keywords** to sum click drops globally. Only the pages with the heaviest losses (e.g., -50, -100+) are surface-targeted.*
             """)
             
-            # Map ALL keywords experiencing click losses to find accurate global priority pages
             priority_pages_map = {}
-            global_decaying_queries = df_q[df_q['Clicks_Delta'] < -2.0]  # Focus strictly on queries losing at least 2 clicks
+            global_decaying_queries = df_q[df_q['Clicks_Delta'] < -2.0]
             
             for _, r in global_decaying_queries.iterrows():
                 mapped_url, confident = find_best_url_match_precise(r, df_p)
@@ -657,10 +670,8 @@ if uploaded_file is not None:
                         priority_pages_map[mapped_url]["keywords"].append(r['Queries'])
                     priority_pages_map[mapped_url]["loss"] += abs(r['Clicks_Delta'])
             
-            # Filter out pages that don't have a minimum threshold click loss (e.g., at least 10 clicks lost)
             filtered_pages_map = {url: details for url, details in priority_pages_map.items() if details["loss"] >= 10}
             
-            # If no pages hit the -10 mark, fall back to whatever is there so the app doesn't go blank
             if not filtered_pages_map:
                 filtered_pages_map = priority_pages_map
                 
@@ -679,7 +690,6 @@ if uploaded_file is not None:
                     </div>
                     """, unsafe_allow_html=True)
                     
-                    # Columns to present on-page and metadata recommendations Side-by-Side
                     col_meta, col_onpage = st.columns(2)
                     
                     with col_meta:
@@ -701,7 +711,6 @@ if uploaded_file is not None:
                         st.text_input("Suggested Target H1 Heading:", value=recs['h1'], key=f"h1_{idx}")
                         st.text_input("Suggested Supporting H2 Heading:", value=recs['h2'], key=f"h2_{idx}")
                     
-                    # Ready-to-go content patch block
                     st.markdown("#### 📝 Copy-paste Content Update Block")
                     st.info(recs['blurb'])
                     st.markdown("---")
