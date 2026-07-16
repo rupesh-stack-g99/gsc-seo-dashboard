@@ -215,7 +215,7 @@ with st.expander("📖 View Forensic Capability & Core Functionality (What this 
     """)
 
 # =========================================================================
-# REQUIRED EXPORT INSTRUCTIONS & FILE UPLOADER (NOW AT THE TOP)
+# REQUIRED EXPORT INSTRUCTIONS & FILE UPLOADER
 # =========================================================================
 st.markdown("""
 <div class="upload-requirements-box">
@@ -326,11 +326,6 @@ def parse_gsc_sheet(df, dim_name):
     return normalized
 
 def find_best_url_match_precise(query_row, df_pages, max_offset=6.0):
-    """
-    High-Precision Semantic Matching:
-    Enforces distinct semantic scoring constraints to link queries to target URLs,
-    returning both the matched URL and a boolean confidence level flag.
-    """
     query_str = str(query_row['Queries']).lower().strip()
     q_pos = query_row['Position']
     
@@ -355,14 +350,14 @@ def find_best_url_match_precise(query_row, df_pages, max_offset=6.0):
         token_matches = sum(1 for token in core_nouns if token in url_path)
         score += (token_matches * 5)
         
-        for critical_word in ['kybella', 'earlobe', 'piercing', 'mounjaro', 'tirzepatide', 'botox']:
+        for critical_word in ['kybella', 'earlobe', 'piercing', 'mounjaro', 'tirzepatide', 'botox', 'sculptra']:
             if critical_word in query_str:
                 if critical_word in url_path:
                     score += 20  
                 else:
                     score -= 15  
                     
-        for geo in ['weehawken', 'hoboken', 'jersey']:
+        for geo in ['weehawken', 'hoboken', 'jersey', 'oak brook', 'oakbrook']:
             if geo in query_str and geo in url_path:
                 score += 5
                 
@@ -381,45 +376,48 @@ def find_best_url_match_precise(query_row, df_pages, max_offset=6.0):
     return best_url if best_url else "Manual GSC Check Required", is_highly_confident
 
 # -------------------------------------------------------------------------
-# NEW BACKEND HELPER: AUTOMATED CONTENT & METRICS RECOMMENDATIONS ENGINE
+# BACKEND HELPER: COMPLETE-SENTENCE SEO RECOMMENDATION ENGINE
 # -------------------------------------------------------------------------
 def generate_seo_recommendations(page_url, keywords):
     """
-    Programmatically generates targeted Meta Titles, Descriptions, 
-    Headings, and Copy Blurps utilizing the decaying target keywords.
+    Generates high-impact meta tags and on-page assets as complete, natural sentences.
+    Never cuts text off with dots (...) inside fields.
     """
-    # Grab the folder or last slug of the URL to give the UI a clean page title context
     clean_topic = page_url.split('/')[-2] if page_url.endswith('/') else page_url.split('/')[-1]
     clean_topic = clean_topic.replace('-', ' ').replace('_', ' ').title()
     if not clean_topic or clean_topic == "":
-        clean_topic = "Core Target Page"
+        clean_topic = "Treatment"
         
-    primary_kw = keywords[0].title() if len(keywords) > 0 else "Our Services"
+    primary_kw = keywords[0].title() if len(keywords) > 0 else "Our Treatments"
     secondary_kws = ", ".join([k.lower() for k in keywords[1:3]]) if len(keywords) > 1 else ""
     
-    # 1. Meta Title (Enforces ideal ~50-60 character standard)
-    meta_title = f"{primary_kw} Services - {clean_topic}"
-    if len(meta_title) > 60:
-        meta_title = meta_title[:57] + "..."
+    # --- NO-DOT METAS GENERATOR ---
+    # Smart structural fallback variations strictly under 60 characters
+    opts_title = [
+        f"{primary_kw} in Oak Brook | Custom Restorative Services",
+        f"{primary_kw} Treatment | Restorative Skincare Specialists",
+        f"Professional {primary_kw} Treatments",
+        f"{primary_kw} Services"
+    ]
+    meta_title = next((opt for opt in opts_title if len(opt) <= 60), opts_title[-1])
         
-    # 2. Meta Description (Targeting precise ~145-160 character boundary limit)
-    meta_desc = f"Looking for {primary_kw.lower()}? We offer specialized, high-impact strategies tailored for your needs."
-    if secondary_kws:
-        meta_desc += f" Proudly handling {secondary_kws}."
-    meta_desc += " Get started today!"
-    if len(meta_desc) > 160:
-        meta_desc = meta_desc[:157] + "..."
-        
-    # 3. Dynamic Headings
-    h1_tag = f"Specialized {primary_kw}"
-    h2_tag = f"Industry-Leading Results for {primary_kw}"
+    # Smart dynamic descriptions strictly under 160 characters
+    desc_p1 = f"Experience premium {primary_kw.lower()} designed to restore youthful, natural volume."
+    desc_p2 = f" Discover customized {primary_kw.lower()} solutions today."
     
-    # 4. Copy-paste ready Content Blurb
+    if len(desc_p1 + desc_p2) <= 160:
+        meta_desc = desc_p1 + desc_p2
+    else:
+        meta_desc = desc_p1
+        
+    # On-page elements
+    h1_tag = f"Natural {primary_kw} Treatments"
+    h2_tag = f"Restore Youthful Volume with Custom {primary_kw}"
+    
     content_blurb = (
-        f"Optimizing your performance starts with target precision. Our dedicated team approaches "
-        f"<b>{primary_kw.lower()}</b> with industry-leading practices to deliver outstanding results. "
-        f"By focusing on specific solutions for {secondary_kws if secondary_kws else primary_kw.lower()}, "
-        f"we ensure your custom strategies are streamlined, efficient, and built for growth."
+        f"If you are seeking professional solutions, our team delivers premier results. "
+        f"We utilize state-of-the-art procedures to personalize your treatment plan, "
+        f"helping you achieve long-lasting improvements in skin quality, symmetry, and overall skin elasticity."
     )
     
     return {
@@ -638,17 +636,19 @@ if uploaded_file is not None:
                         """, unsafe_allow_html=True)
 
         # =========================================================================
-        # === TAB 6: EXECUTION BLUEPRINT (UPGRADED! PLACED SUGGESTIONS HERE) ===
+        # === TAB 6: EXECUTION BLUEPRINT (UPGRADED GLOBAL CLICK DECAY ANALYSIS) ===
         # =========================================================================
         with tab6:
             st.markdown("## 📋 Priority Implementation & Custom SEO Blueprint")
             st.markdown("""
-            *This custom roadmap identifies your top-decaying URLs and **automatically designs target optimization suggestions** (Metas, H1, H2, and content patches) to make site implementation faster and easier.*
+            *This dashboard isolates top-decaying URLs by scanning **all GSC keywords** to sum click drops globally. Only the pages with the heaviest losses (e.g., -50, -100+) are surface-targeted.*
             """)
             
-            # Map queries to identify priority target URLs automatically
+            # Map ALL keywords experiencing click losses to find accurate global priority pages
             priority_pages_map = {}
-            for _, r in decay_queries.head(12).iterrows():
+            global_decaying_queries = df_q[df_q['Clicks_Delta'] < -2.0]  # Focus strictly on queries losing at least 2 clicks
+            
+            for _, r in global_decaying_queries.iterrows():
                 mapped_url, confident = find_best_url_match_precise(r, df_p)
                 if mapped_url and mapped_url != "Manual GSC Check Required":
                     if mapped_url not in priority_pages_map:
@@ -657,8 +657,14 @@ if uploaded_file is not None:
                         priority_pages_map[mapped_url]["keywords"].append(r['Queries'])
                     priority_pages_map[mapped_url]["loss"] += abs(r['Clicks_Delta'])
             
-            # Sort mapped assets by total click loss to isolate the top 3 high-priority targets
-            sorted_priority_pages = sorted(priority_pages_map.items(), key=lambda x: x[1]["loss"], reverse=True)[:3]
+            # Filter out pages that don't have a minimum threshold click loss (e.g., at least 10 clicks lost)
+            filtered_pages_map = {url: details for url, details in priority_pages_map.items() if details["loss"] >= 10}
+            
+            # If no pages hit the -10 mark, fall back to whatever is there so the app doesn't go blank
+            if not filtered_pages_map:
+                filtered_pages_map = priority_pages_map
+                
+            sorted_priority_pages = sorted(filtered_pages_map.items(), key=lambda x: x[1]["loss"], reverse=True)[:3]
             
             if sorted_priority_pages:
                 for idx, (url, details) in enumerate(sorted_priority_pages):
@@ -666,10 +672,10 @@ if uploaded_file is not None:
                     recs = generate_seo_recommendations(url, kws)
                     
                     st.markdown(f"""
-                    <div class="directive-card warning" style="margin-top: 25px;">
-                        <span class="warning-tag">🚨 HIGH PRIORITY FOCUS PAGE #{idx+1}</span>
+                    <div class="directive-card danger" style="margin-top: 25px;">
+                        <span class="warning-tag" style="background-color: #ef4444; color: #ffffff;">🚨 ACTION REQUIRED: HIGH LOSS FOCUS PAGE #{idx+1}</span>
                         <div class="directive-title" style="margin-top: 10px;">URL: <a href="{url}" target="_blank" style="color: #60a5fa;">{url}</a></div>
-                        <p style="margin: 0; font-size: 0.9rem;"><b>Cumulative Target Click Loss:</b> -{int(details['loss'])} clicks</p>
+                        <p style="margin: 0; font-size: 0.95rem;"><b>Cumulative Click Decay:</b> <span style="color:#ef4444; font-weight:bold;">-{int(details['loss'])} clicks</span> across targeted keywords</p>
                     </div>
                     """, unsafe_allow_html=True)
                     
@@ -677,7 +683,7 @@ if uploaded_file is not None:
                     col_meta, col_onpage = st.columns(2)
                     
                     with col_meta:
-                        st.markdown("#### 🔍 Recommended Meta Configuration")
+                        st.markdown("#### 🔍 Complete Meta Configuration (No Dots/Cutoffs)")
                         st.text_input(
                             f"Suggested Meta Title (Char Count: {len(recs['title'])}/60)", 
                             value=recs['title'], 
@@ -691,7 +697,7 @@ if uploaded_file is not None:
                         )
                         
                     with col_onpage:
-                        st.markdown("#### ✍️ Recommended Heading Framework")
+                        st.markdown("#### ✍️ Complete Heading Framework")
                         st.text_input("Suggested Target H1 Heading:", value=recs['h1'], key=f"h1_{idx}")
                         st.text_input("Suggested Supporting H2 Heading:", value=recs['h2'], key=f"h2_{idx}")
                     
@@ -700,6 +706,6 @@ if uploaded_file is not None:
                     st.info(recs['blurb'])
                     st.markdown("---")
             else:
-                st.info("No high-decay pages were identified to construct recommendations. Your site trends are currently stable!")
+                st.info("No pages with meaningful click drops detected. Your site is currently experiencing stable growth!")
     else:
         st.error("❌ Data formatting processing configuration mismatch.")
