@@ -232,7 +232,7 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # APPLICATION DESCRIPTION
-with st.expander("📖 View Forensic Capability & Core Functionality (What this app does & finds)", expanded=False):
+with st.expander("📖 View Forensic Capability & Core Functionality", expanded=False):
     st.markdown("""
     ## ⚙️ Forensic Capability & Core Functionality
 
@@ -249,7 +249,7 @@ with st.expander("📖 View Forensic Capability & Core Functionality (What this 
     """)
 
 # =========================================================================
-# REQUIRED EXPORT INSTRUCTIONS & FILE UPLOADER
+# REQUIRED EXPORT INSTRUCTIONS & STABILIZED FILE UPLOADER
 # =========================================================================
 if COMPARISON_MODE == "3-Month Comparison":
     st.markdown("""
@@ -278,7 +278,12 @@ else:
     </div>
     """, unsafe_allow_html=True)
 
-uploaded_file = st.file_uploader("Upload GSC ZIP Archive here:", type=["zip"])
+# FIXED KEY TO PREVENT FLICKERING/RESETTING UPON DROPDOWN CONFIGURATIONS
+uploaded_file = st.file_uploader(
+    "Upload GSC ZIP Archive here:", 
+    type=["zip"], 
+    key="gsc_zip_uploader"
+)
 
 st.markdown("---")
 
@@ -584,7 +589,7 @@ if uploaded_file is not None:
             st.markdown("## Algorithmic Updates Checker")
             
             if COMPARISON_MODE == "Normal 28 Days" or not has_comparison_metrics:
-                st.info("ℹ️ **This tab is optimized for '3-Month Comparison' datasets.** To see historical algorithmic core update evaluations, please download and upload a raw comparison ZIP and switch the sidebar setting to '3-Month Comparison'.")
+                st.info("ℹ️ **This tab is optimized for '3-Month Comparison' datasets.** To see historical algorithmic core update evaluations, please download and upload a raw GSC comparison ZIP and switch the sidebar setting to '3-Month Comparison'.")
             else:
                 st.markdown("""
                 *This diagnostic analysis measures the systemic stability of the organic profile. By evaluating global ratios of decaying keywords against ascending terms, it assesses whether traffic contractions point toward site-wide algorithmic suppression or minor seasonal turbulence.*
@@ -751,7 +756,7 @@ if uploaded_file is not None:
                 st.info("ℹ️ **This tab is optimized for '3-Month Comparison' datasets.** Analyzing surging impressions vs. stagnant traffic requires comparative data over time.")
             else:
                 st.markdown("""
-                *This diagnostic analysis filters queries experiencing rapid visibility expansions (impressions increasing by **$\ge 500$** over the 3-month comparative period) where actual organic clicks have stagnated or dropped ($\le 0$). This identifies prime structural opportunities where search demand is surging but your snippet is failing to attract the user's click.*
+                *This diagnostic analysis filters queries experiencing rapid visibility expansions (impressions increasing by $\ge 500$ over the 3-month comparative period) where actual organic clicks have stagnated or dropped ($\le 0$). This identifies prime structural opportunities where search demand is surging but your snippet is failing to attract the user's click.*
                 """)
                 
                 # Extract growing impressions with flat/declining traffic (optimized threshold: 500 impressions)
@@ -781,7 +786,7 @@ if uploaded_file is not None:
                             </div>
                             """, unsafe_allow_html=True)
                 else:
-                    st.info("No queries found showing surging impressions ($\ge 500$) alongside flat/declining traffic under the current exclusions.")
+                    st.info("No queries found showing surging impressions alongside flat/declining traffic under the current exclusions.")
 
         # === TAB 6: STRIKING DISTANCE QUICK WINS ===
         with tabs[5]:
@@ -917,4 +922,4 @@ if uploaded_file is not None:
     else:
         st.error("Uploaded ZIP does not appear to contain matching 'Queries' and 'Pages' CSV structures.")
 else:
-    st.info("👋 Upload a raw exported GSC ZIP archive above to run diagnostic pipelines.")
+    st.info("👋 Upload a raw GSC ZIP archive above to begin running your forensic audit.")
