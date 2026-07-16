@@ -402,7 +402,7 @@ def find_best_url_match_precise(query_row, df_pages, max_offset=6.0):
     return best_url if best_url else "Manual GSC Check Required", is_highly_confident
 
 # -------------------------------------------------------------------------
-# DIRECTIVE-BASED METADATA INSTRUCTION BLUEPRINTS (NO BAD TEXT WRITING)
+# DIRECTIVE-BASED METADATA INSTRUCTION BLUEPRINTS
 # -------------------------------------------------------------------------
 def generate_seo_recommendations(page_url, keywords):
     url_lower = page_url.lower()
@@ -518,7 +518,7 @@ if uploaded_file is not None:
             "📋 Execution Blueprint"
         ])
 
-        # Prepare variables to pass data to Tab 6 Blueprint
+        # Prepare extraction pools to cross-populate Tab 6
         decayed_extracted = []
         ctr_gaps_extracted = []
         cannibal_clashes_extracted = []
@@ -556,7 +556,7 @@ if uploaded_file is not None:
             """)
             st.latex(r"\text{Core Hit Score} = \left( \frac{\sum \text{Clicks Lost across Decaying Queries}}{\sum \text{Clicks Lost} + \sum \text{Clicks Gained}} \right) \times 100")
             
-            # FULLY DETAILED & COMPACTLY BOXED EXPLANATION
+            # FULLY DETAILED EXPLANATION
             st.markdown(f"""
             <div class="math-explanation-box">
                 <span style="font-weight: 700; color: #4f46e5; font-size: 1.0rem;">💡 Understanding the Mathematical Logic & Ratios</span><br>
@@ -733,8 +733,14 @@ if uploaded_file is not None:
                         priority_pages_map[mapped_url]["keywords"].append(r['Queries'])
                     priority_pages_map[mapped_url]["loss"] += abs(r['Clicks_Delta'])
             
-            # Sort pages strictly by loss amount
-            sorted_priority_pages = sorted(priority_pages_map.items(), key=lambda x: x[1]["loss"], reverse=True)
+            # STRICT FILTER: Keep ONLY pages with 25 or more lost clicks
+            severe_priority_pages = {
+                url: details for url, details in priority_pages_map.items() 
+                if details["loss"] >= 25
+            }
+            
+            # Sort the qualifying pages by overall loss metrics
+            sorted_priority_pages = sorted(severe_priority_pages.items(), key=lambda x: x[1]["loss"], reverse=True)
             
             if sorted_priority_pages:
                 for idx, (url, details) in enumerate(sorted_priority_pages[:10]):
@@ -744,13 +750,9 @@ if uploaded_file is not None:
                     # Core Directive Generator
                     recs = generate_seo_recommendations(url, kws)
                     
-                    # 50 CLICK THRESHOLD CHECK AND WARNING BANNER
-                    if loss_amount >= 50:
-                        header_badge = '<span class="warning-tag" style="background-color: #ef4444; color: #ffffff; padding: 4px 8px;">🚨 CRITICAL ACTION REQUIRED: SEVERE LOSS FOCUS PAGE</span>'
-                        loss_text = f"<b>Cumulative Click Decay:</b> <span style='color:#ef4444; font-weight:bold;'>-{loss_amount} clicks</span> across targeted keywords"
-                    else:
-                        header_badge = '<span class="warning-tag" style="background-color: #4b5563; color: #f3f4f6; padding: 4px 8px;">ℹ️ NOTICE: UNDER 50-CLICK INVESTIGATION THRESHOLD</span>'
-                        loss_text = f"<b>Cumulative Click Decay:</b> <span style='color:#9ca3af;'>-{loss_amount} clicks</span> (Page drop is under priority focus baseline threshold of 50 clicks)"
+                    # High loss banner for priority execution targets (All showing here are >= 25)
+                    header_badge = '<span class="warning-tag" style="background-color: #ef4444; color: #ffffff; padding: 4px 8px;">🚨 CRITICAL ACTION REQUIRED: SEVERE LOSS FOCUS PAGE</span>'
+                    loss_text = f"<b>Cumulative Click Decay:</b> <span style='color:#ef4444; font-weight:bold;'>-{loss_amount} clicks</span> across targeted keywords"
 
                     st.markdown(f"""
                     <div class="directive-card danger" style="margin-top: 25px;">
@@ -822,6 +824,6 @@ if uploaded_file is not None:
                     st.info(recs['copy_direction'])
                     st.markdown("---")
             else:
-                st.info("No pages with click drops detected.")
+                st.info("No priority pages with cumulative click drops of 25 or more detected.")
     else:
         st.error("❌ Data formatting processing configuration mismatch.")
