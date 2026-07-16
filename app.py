@@ -15,7 +15,7 @@ except ImportError:
     import xlsxwriter
 
 # =========================================================================
-# PREMIUM MIDNIGHT DARK THEME ENGINE + MAXIMUM WIDTH LAYOUT
+# THEME-AGNOSTIC ADAPTIVE ENGINE + MAXIMUM WIDTH LAYOUT
 # =========================================================================
 st.set_page_config(
     page_title="GSC Forensic Overview",
@@ -26,11 +26,6 @@ st.set_page_config(
 
 st.markdown("""
     <style>
-    /* Force main app background to deep midnight */
-    .stApp { 
-        background-color: #0f172a !important; 
-    }
-    
     /* COMPACT SIDEBAR & ULTRA-WIDE RESULTS CONTAINER OVERRIDES */
     [data-testid="stSidebar"] {
         min-width: 14rem !important;
@@ -44,9 +39,9 @@ st.markdown("""
         padding-top: 2rem !important;
     }
     
-    /* Typography & Headers */
+    /* Typography & Headers - Dynamically adapt to active theme */
     h1, h2, h3, h4, h5, h6, .directive-header { 
-        color: #f8fafc !important; 
+        color: var(--text-color) !important; 
         font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
     }
     h1, h2, h3 {
@@ -54,6 +49,7 @@ st.markdown("""
         letter-spacing: -0.02em;
     }
     
+    /* Hero banner keeps its distinct dark background so white text is readable in both modes */
     .hero-banner {
         background: linear-gradient(135deg, #1e1b4b 0%, #312e81 100%);
         color: #ffffff !important;
@@ -76,51 +72,50 @@ st.markdown("""
         font-weight: 400;
     }
     
+    /* Directive cards adapt to light/dark system settings automatically */
     .directive-card {
-        background-color: #1e293b !important;
-        border: 1px solid #334155 !important;
+        background-color: var(--secondary-background-color) !important;
+        border: 1px solid rgba(128, 128, 128, 0.2) !important;
         border-left: 5px solid #3b82f6 !important;
         padding: 20px;
         border-radius: 10px;
         margin-bottom: 20px;
-        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
     }
     .directive-card.danger {
         border-left-color: #ef4444 !important;
-        background-color: #2d1616 !important;
+        background-color: rgba(239, 68, 68, 0.1) !important;
     }
     .directive-card.warning {
         border-left-color: #f59e0b !important;
-        background-color: #2d200f !important;
+        background-color: rgba(245, 158, 11, 0.1) !important;
     }
     .directive-card.success {
         border-left-color: #10b981 !important;
-        background-color: #0f2d1e !important;
+        background-color: rgba(16, 185, 129, 0.1) !important;
     }
     
     .directive-title {
         font-size: 1.2rem !important;
         font-weight: 700 !important;
         margin-bottom: 8px !important;
+        color: var(--text-color) !important;
     }
     
     .directive-text {
         font-size: 0.95rem !important;
         line-height: 1.6 !important;
-        color: #cbd5e1 !important;
+        color: var(--text-color) !important;
     }
     
     button[data-baseweb="tab"] {
         font-size: 1.05rem !important;
         font-weight: 600 !important;
-        color: #94a3b8 !important;
-    }
-    button[aria-selected="true"] {
-        color: #38bdf8 !important;
     }
 
+    /* Requirement Box adapts seamlessly via transparent background tints */
     .upload-requirements-box {
-        background-color: #1e1b4b;
+        background-color: rgba(79, 70, 229, 0.08);
         border: 2px dashed #4f46e5;
         border-radius: 8px;
         padding: 20px;
@@ -129,13 +124,13 @@ st.markdown("""
     }
 
     .url-helper-box {
-        background-color: #1e293b;
-        border: 1px dashed #475569;
+        background-color: var(--secondary-background-color);
+        border: 1px dashed rgba(128, 128, 128, 0.3);
         border-radius: 6px;
         padding: 12px;
         margin-top: 8px;
         font-size: 0.85rem;
-        color: #e2e8f0;
+        color: var(--text-color);
     }
 
     .warning-tag {
@@ -161,17 +156,17 @@ st.markdown("""
     }
     
     .stMarkdown p, .stMarkdown span {
-        color: #e2e8f0 !important;
+        color: var(--text-color) !important;
     }
     
     label[data-testid="stWidgetLabel"] p {
-        color: #cbd5e1 !important;
+        color: var(--text-color) !important;
         font-weight: 700 !important;
         font-size: 0.95rem !important;
     }
     
     hr {
-        border-color: #334155 !important;
+        border-color: rgba(128, 128, 128, 0.2) !important;
     }
     </style>
 """, unsafe_allow_html=True)
@@ -181,7 +176,6 @@ st.markdown("""
 # =========================================================================
 st.sidebar.markdown("### ⚙️ Forensic Tuning")
 
-# Changed label to inform user they can comma-separate items
 BRAND_INPUT = st.sidebar.text_input(
     "Exclude Branded Keywords:", 
     value="", 
@@ -225,7 +219,7 @@ with st.expander("📖 View Forensic Capability & Core Functionality (What this 
 # =========================================================================
 st.markdown("""
 <div class="upload-requirements-box">
-    <h3 style="margin-top:0; color:#a5b4fc !important;">⚠️ GSC Export Requirement Checklist</h3>
+    <h3 style="margin-top:0; color: #4f46e5 !important;">⚠️ GSC Export Requirement Checklist</h3>
     <p style="margin-bottom:8px; font-size:0.95rem;">To construct comparative trend diagnostics, you must upload the <b>unzipped raw export zip</b> directly generated by Google Search Console:</p>
     <ul style="margin-top:0; margin-bottom:0; font-size:0.95rem; line-height: 1.6;">
         <li>Go to Google Search Console performance menu.</li>
@@ -424,7 +418,7 @@ if uploaded_file is not None:
         
         # MULTI-KEYWORD EXCLUSION SYSTEM (Regex OR builder)
         if BRAND_INPUT:
-            # Split comma list, clean out empty spaces, then join with regulatory regex pipe '|'
+            # Split comma list, clean out empty spaces, then join with regex pipe '|'
             exclusions = [x.strip() for x in BRAND_INPUT.split(",") if x.strip()]
             if exclusions:
                 regex_pattern = "|".join(exclusions)
