@@ -237,7 +237,7 @@ with st.expander("📖 View Forensic Capability & Core Functionality", expanded=
         * **High-Value Page 1 CTR Gaps:** Detects terms ranking on Page 1 that are performing below natural CTR curves, isolating traffic loss.
         * **Keyword Cannibalization Clashes:** Flags competing internal landing pages ranking for identical search terms.
         * **Hidden Growth (Flat Traffic):** Pinpoints pages generating high visibility gains (impressions) without generating corresponding click increases.
-        * **Striking-Distance Quick Wins:** Finds queries hovering on the cusp of page one (positions 11–15) with high impressions.
+        * **Striking-Distance Quick Wins:** Finds queries hovering on the cusp of page one and beyond (positions 8–30) with high impressions.
     """)
 
 # =========================================================================
@@ -767,10 +767,11 @@ if uploaded_file is not None:
         with tabs[5]:
             st.markdown("## Striking Distance Opportunities")
             st.markdown("""
-            *These queries are positioned on the cusp of high-traffic slots (ranks 11 to 15). With targeted structural enhancements, these assets can be vaulted onto Page 1 to capture incoming clicks.*
+            *These queries are positioned on the cusp of high-traffic slots (ranks 8 to 30). With targeted structural enhancements, these assets can be vaulted onto Page 1 to capture incoming clicks.*
             """)
             
-            striking_queries = df_q[(df_q['Position'] >= 10.5) & (df_q['Position'] <= 15.4)].sort_values(by='Impressions', ascending=False).head(15)
+            # Adjusted range filter strictly mapping positions 8 to 30
+            striking_queries = df_q[(df_q['Position'] >= 7.5) & (df_q['Position'] <= 30.4)].sort_values(by='Impressions', ascending=False).head(15)
             
             if not striking_queries.empty:
                 for _, r in striking_queries.iterrows():
@@ -852,7 +853,8 @@ if uploaded_file is not None:
             top_5_tasks = dict(sorted(blueprint_tasks.items(), key=lambda x: x[1]['score'], reverse=True)[:5])
 
             if top_5_tasks:
-                st.markdown(f"### Isolated **{len(top_5_tasks)} / {len(blueprint_tasks)}** Unique URLs Requiring On-Page/Technical Adjustments")
+                # Removed total available task count (" / 19") for maximum focus
+                st.markdown(f"### Isolated **{len(top_5_tasks)}** Unique URLs Requiring On-Page/Technical Adjustments")
                 
                 export_data = []
                 
