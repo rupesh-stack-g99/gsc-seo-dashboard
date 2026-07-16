@@ -543,7 +543,7 @@ if uploaded_file is not None:
         if total_lost_clicks > 0:
             core_hit_score = round((total_lost_clicks / (total_lost_clicks + total_gained_clicks + 1e-5)) * 100, 1)
 
-        # 7-Tab Setup (New tab added at Index 5)
+        # 7-Tab Setup (New tab added at Index 4)
         tab1, tab2, tab3, tab4, tab5, tab6, tab7 = st.tabs([
             "🔍 Core Update Diagnostic",
             "📉 Keyword Decay Alerts",
@@ -709,16 +709,16 @@ if uploaded_file is not None:
             if not clash_detected:
                 st.success("Excellent! No critical structural keyword cannibalization clashes found in this date range.")
 
-        # === TAB 5: HIDDEN GROWTH (FLAT TRAFFIC) [NEW TAB] ===
+        # === TAB 5: HIDDEN GROWTH (FLAT TRAFFIC) ===
         with tab5:
             st.markdown("## Pages with Growing Impressions but Flat Traffic")
             st.markdown("""
-            *This diagnostic analysis filters queries experiencing rapid visibility expansions (impressions increasing by **$\ge$ 300** over the comparative period) where actual organic clicks have stagnated or dropped ($\le 0$). This identifies prime structural opportunities where search demand is surging but your snippet is failing to attract the user's click.*
+            *This diagnostic analysis filters queries experiencing rapid visibility expansions (impressions increasing by **$\ge$ 1,000** over the 3-month comparative period) where actual organic clicks have stagnated or dropped ($\le 0$). This identifies prime structural opportunities where search demand is surging but your snippet is failing to attract the user's click.*
             """)
             
-            # Extract growing impressions with flat/declining traffic
+            # Extract growing impressions with flat/declining traffic (optimized threshold for 90-day comparison)
             flat_growth_queries = df_q[
-                (df_q['Impressions_Delta'] >= 300) & 
+                (df_q['Impressions_Delta'] >= 1000) & 
                 (df_q['Clicks_Delta'] <= 0)
             ].sort_values(by='Impressions_Delta', ascending=False).head(15)
             
@@ -733,7 +733,7 @@ if uploaded_file is not None:
                             <div class="directive-title">📈 High Demand Capture Opportunity: "{r['Queries']}"</div>
                             <div class="directive-text">
                                 <ul style="margin-top:6px; margin-bottom:4px;">
-                                    <li><b>Impression Growth (Demand Surge):</b> <span style="color:#10b981; font-weight:bold;">+{int(r['Impressions_Delta'])} views</span></li>
+                                    <li><b>Impression Growth (3-Month Demand Surge):</b> <span style="color:#10b981; font-weight:bold;">+{int(r['Impressions_Delta'])} views</span></li>
                                     <li><b>Click Volatility (Stagnant Traffic):</b> <span style="color:#ef4444; font-weight:bold;">{int(r['Clicks_Delta'])} clicks</span></li>
                                     <li><b>Current Ranking Position:</b> {round(r['Position'], 1)}</li>
                                     <li>🔗 <b>Identified Target URL:</b> <code>{mapped_url}</code> {badge}</li>
@@ -743,7 +743,7 @@ if uploaded_file is not None:
                         </div>
                         """, unsafe_allow_html=True)
             else:
-                st.info("No queries found showing surging impressions ($\ge$ 300) alongside flat/declining traffic under the current exclusions.")
+                st.info("No queries found showing surging impressions ($\ge$ 1,000) alongside flat/declining traffic under the current exclusions.")
 
         # === TAB 6: STRIKING DISTANCE QUICK WINS ===
         with tab6:
