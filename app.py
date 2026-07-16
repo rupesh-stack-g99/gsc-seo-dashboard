@@ -211,6 +211,15 @@ BRAND_INPUT = st.sidebar.text_input(
 MIN_IMPR_THRESHOLD = st.sidebar.number_input("Min. Impressions:", min_value=1, value=100)
 MAX_CANNIBAL_OFFSET = st.sidebar.slider("Cannibalization Gap:", 1, 15, 6)
 
+# DYNAMIC CLICK LOSS SLIDER
+MIN_CLICK_LOSS = st.sidebar.slider(
+    "Min. Click Loss Threshold:", 
+    min_value=0, 
+    max_value=100, 
+    value=25,
+    help="Filters the Blueprint tab to only show landing pages that have lost at least this many cumulative clicks."
+)
+
 st.sidebar.markdown("---")
 SHOW_UNVERIFIED = st.sidebar.checkbox("🔍 Include unverified URLs", value=False)
 
@@ -383,7 +392,7 @@ def find_best_url_match_precise(query_row, df_pages, max_offset=6.0):
                 else:
                     score -= 15  
                     
-        for geo in ['weehawken', 'hoboken', 'jersey', 'oak brook', 'oakbrook']:
+        for geo in ['weehawken', 'hoboken', 'jersey', 'oak brook', 'oakbrook', 'wadena']:
             if geo in query_str and geo in url_path:
                 score += 5
                 
@@ -402,26 +411,70 @@ def find_best_url_match_precise(query_row, df_pages, max_offset=6.0):
     return best_url if best_url else "Manual GSC Check Required", is_highly_confident
 
 # -------------------------------------------------------------------------
-# DIRECTIVE-BASED METADATA INSTRUCTION BLUEPRINTS
+# DIRECTIVE-BASED METADATA INSTRUCTION BLUEPRINTS (WITH LOCATION PARSING)
 # -------------------------------------------------------------------------
 def generate_seo_recommendations(page_url, keywords):
     url_lower = page_url.lower()
     
-    # Strip basic geography or brand structures to extract target topic parameters
-    junk_filters = [
-        '1aesthetic', '1-aesthetic', 'aesthetic', 'clinic', 'dr', 'doctor',
-        'hoboken', 'weehawken', 'nj', 'new-jersey', 'newjersey', 'oak-brook', 'oakbrook'
+    # Common geographic list to strip out of the topic and identify as the location
+    geo_words = [
+        'hoboken', 'weehawken', 'nj', 'new-jersey', 'newjersey', 
+        'oak-brook', 'oakbrook', 'il', 'chicago', 'wadena', 'mn', 'minnesota'
     ]
     
+    # Standard junk filters
+    junk_filters = [
+        '1aesthetic', '1-aesthetic', 'aesthetic', 'clinic', 'dr', 'doctor', 'med spa', 'medspa'
+    ]
+    
+    # Try to extract the location from keywords or URL
+    detected_location = ""
+    all_kws_flat = " ".join(keywords).lower()
+    
+    if 'wadena' in all_kws_flat or 'mn' in all_kws_flat:
+        detected_location = "Wadena, MN"
+    elif 'hoboken' in all_kws_flat:
+        detected_location = "Hoboken, NJ"
+    elif 'weehawken' in all_kws_flat:
+        detected_location = "Weehawken, NJ"
+    elif 'oak brook' in all_kws_flat or 'oakbrook' in all_kws_flat:
+        detected_location = "Oak Brook, IL"
+    else:
+        # Fallback: check the URL path for geo signals
+        if 'hoboken' in url_lower:
+            detected_location = "Hoboken, NJ"
+        elif 'weehawken' in url_lower:
+            detected_location = "Weehawken, NJ"
+        elif 'oak-brook' in url_lower or 'oakbrook' in url_lower:
+            detected_location = "Oak Brook, IL"
+        elif 'wadena' in url_lower:
+            detected_location = "Wadena, MN"
+        else:
+            detected_location = "" # Leave blank if no location is detected
+
+    # Clean up the keywords to get the core topic without geography duplicates
     clean_kws = []
     for kw in keywords:
         kw_cleaned = kw.lower()
+        # Remove any known locations and junk words to isolate the core treatment/topic
+        for geo in geo_words:
+            kw_cleaned = re.sub(rf'\b{geo}\b', '', kw_cleaned).strip()
         for junk in junk_filters:
-            kw_cleaned = kw_cleaned.replace(junk, "").strip()
+            kw_cleaned = re.sub(rf'\b{junk}\b', '', kw_cleaned).strip()
+        
+        # Clean extra spaces
+        kw_cleaned = re.sub(r'\s+', ' ', kw_cleaned).strip()
         if kw_cleaned:
             clean_kws.append(kw_cleaned)
             
     primary_topic = clean_kws[0].title() if clean_kws else "Core Treatment"
+    
+    # If the topic ended up empty or too short, fallback gracefully
+    if len(primary_topic) < 3:
+        primary_topic = "Clinical Treatment"
+
+    # Build the localized string suffix dynamically
+    loc_suffix = f" in {detected_location}" if detected_location else ""
     
     # Detect Page Intent Structure
     is_blog = any(pattern in url_lower for pattern in ['/blog', '/news', '/article', '/resource', '/post', '/insight', '/learning'])
@@ -431,16 +484,16 @@ def generate_seo_recommendations(page_url, keywords):
 
     if is_blog:
         page_type = "Informational / Blog Post"
-        meta_title_directive = f"Action Needed: Rewrite Title to target informative intent for '{primary_topic}'. Avoid clinical booking language. Structure: '[Topic/Question] | Practical Guide & Timeline' (< 60 chars)."
-        meta_desc_directive = f"Action Needed: Write a helpful editorial summary focusing on '{primary_topic.lower()}'. Direct the user to a clinical answer immediately, avoiding transactional CTAs (< 160 chars)."
+        meta_title_directive = f"Action Needed: Rewrite Title to target informative intent for '{primary_topic}'. Structure: '[Topic/Question]{loc_suffix} | Practical Guide & Recovery' (< 60 chars)."
+        meta_desc_directive = f"Action Needed: Write a helpful editorial summary focusing on '{primary_topic.lower()}'. Direct the user to a clinical answer immediately (< 160 chars)."
         h1_directive = f"Rewrite H1 to address the search intent directly: e.g., 'Understanding {primary_topic}: Recovery, Milestones & Practical Expectations'"
         h2_directive = f"Use an answer-target H2 structure: e.g., 'How Long Does {primary_topic} Take to Settle?'"
         copy_direction = f"Ensure this article contains clear section subheadings addressing recovery timelines, side effects, and practical checklists for patients researching '{primary_topic.lower()}'."
     else:
         page_type = "Transactional / Service Page"
-        meta_title_directive = f"Action Needed: Rewrite Title to target localized transactional intent for '{primary_topic}'. Format: '{primary_topic} in [Location] | Restorative Clinical Treatment' (< 60 chars)."
+        meta_title_directive = f"Action Needed: Rewrite Title to target localized transactional intent. Format: '{primary_topic}{loc_suffix} | Restorative Clinical Treatment' (< 60 chars)."
         meta_desc_directive = f"Action Needed: Write a localized, high-converting service description for '{primary_topic.lower()}'. Offer a direct CTA like 'Request your consultation today.' (< 160 chars)."
-        h1_directive = f"Rewrite H1 to establish immediate clinical relevance: e.g., 'Custom {primary_topic} Treatments in [Location]'"
+        h1_directive = f"Rewrite H1 to establish immediate clinical relevance: e.g., 'Custom {primary_topic} Treatments{loc_suffix}'"
         h2_directive = f"Add a benefit-driven supporting H2: e.g., 'Restore Comfort and Clinical Balance with Customized {primary_topic}'"
         copy_direction = f"The content must feature a clear booking CTA above the fold, highlight practitioner experience with '{primary_topic.lower()}', and present clear FAQs about benefits and booking."
         
@@ -717,8 +770,9 @@ if uploaded_file is not None:
         # === TAB 6: EXECUTION BLUEPRINT ===
         with tab6:
             st.markdown("## 📋 Priority Implementation & Custom SEO Blueprint")
-            st.markdown("""
-            *This diagnostic blueprint aggregates click decay across **all of your site's target queries** to surface your highest-exposure landing pages. It evaluates the structure of each URL and query set to dynamically propose customized metadata optimization rules.*
+            st.markdown(f"""
+            *This diagnostic blueprint aggregates click decay across **all of your site's target queries** to surface your highest-exposure landing pages. It evaluates the structure of each URL and query set to dynamically propose customized metadata optimization rules. 
+            Currently showing pages with **cumulative click drops of {MIN_CLICK_LOSS}+ clicks**.*
             """)
             
             priority_pages_map = {}
@@ -733,10 +787,10 @@ if uploaded_file is not None:
                         priority_pages_map[mapped_url]["keywords"].append(r['Queries'])
                     priority_pages_map[mapped_url]["loss"] += abs(r['Clicks_Delta'])
             
-            # STRICT FILTER: Keep ONLY pages with 25 or more lost clicks
+            # DYNAMIC FILTER: Keep ONLY pages meeting the slider-specified lost clicks threshold
             severe_priority_pages = {
                 url: details for url, details in priority_pages_map.items() 
-                if details["loss"] >= 25
+                if details["loss"] >= MIN_CLICK_LOSS
             }
             
             # Sort the qualifying pages by overall loss metrics
@@ -750,8 +804,8 @@ if uploaded_file is not None:
                     # Core Directive Generator
                     recs = generate_seo_recommendations(url, kws)
                     
-                    # High loss banner for priority execution targets (All showing here are >= 25)
-                    header_badge = '<span class="warning-tag" style="background-color: #ef4444; color: #ffffff; padding: 4px 8px;">🚨 CRITICAL ACTION REQUIRED: SEVERE LOSS FOCUS PAGE</span>'
+                    # High loss banner for priority execution targets
+                    header_badge = f'<span class="warning-tag" style="background-color: #ef4444; color: #ffffff; padding: 4px 8px;">🚨 ACTION REQUIRED: LOSS THRESHOLD MET (>{MIN_CLICK_LOSS})</span>'
                     loss_text = f"<b>Cumulative Click Decay:</b> <span style='color:#ef4444; font-weight:bold;'>-{loss_amount} clicks</span> across targeted keywords"
 
                     st.markdown(f"""
@@ -824,6 +878,6 @@ if uploaded_file is not None:
                     st.info(recs['copy_direction'])
                     st.markdown("---")
             else:
-                st.info("No priority pages with cumulative click drops of 25 or more detected.")
+                st.info(f"No priority pages with cumulative click drops of {MIN_CLICK_LOSS} or more detected. Try adjusting the 'Min. Click Loss Threshold' in the sidebar.")
     else:
         st.error("❌ Data formatting processing configuration mismatch.")
