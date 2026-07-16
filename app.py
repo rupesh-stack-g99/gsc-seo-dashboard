@@ -432,17 +432,17 @@ def generate_seo_recommendations(page_url, keywords):
     if is_blog:
         page_type = "Informational / Blog Post"
         meta_title_directive = f"Action Needed: Rewrite Title to target informative intent for '{primary_topic}'. Avoid clinical booking language. Structure: '[Topic/Question] | Practical Guide & Timeline' (< 60 chars)."
-        meta_desc_directive = f"Action Needed: Write a helpful editorial summary focusing on '{primary_topic_lower := primary_topic.lower()}'. Direct the user to a clinical answer immediately, avoiding transactional CTAs (< 160 chars)."
+        meta_desc_directive = f"Action Needed: Write a helpful editorial summary focusing on '{primary_topic.lower()}'. Direct the user to a clinical answer immediately, avoiding transactional CTAs (< 160 chars)."
         h1_directive = f"Rewrite H1 to address the search intent directly: e.g., 'Understanding {primary_topic}: Recovery, Milestones & Practical Expectations'"
         h2_directive = f"Use an answer-target H2 structure: e.g., 'How Long Does {primary_topic} Take to Settle?'"
-        copy_direction = f"Ensure this article contains clear section subheadings addressing recovery timelines, side effects, and practical checklists for patients researching '{primary_topic_lower}'."
+        copy_direction = f"Ensure this article contains clear section subheadings addressing recovery timelines, side effects, and practical checklists for patients researching '{primary_topic.lower()}'."
     else:
         page_type = "Transactional / Service Page"
         meta_title_directive = f"Action Needed: Rewrite Title to target localized transactional intent for '{primary_topic}'. Format: '{primary_topic} in Hoboken & Oak Brook | Restorative Clinical Treatment' (< 60 chars)."
-        meta_desc_directive = f"Action Needed: Write a localized, high-converting service description for '{primary_topic_lower := primary_topic.lower()}'. Offer a direct CTA like 'Request your consultation today.' (< 160 chars)."
+        meta_desc_directive = f"Action Needed: Write a localized, high-converting service description for '{primary_topic.lower()}'. Offer a direct CTA like 'Request your consultation today.' (< 160 chars)."
         h1_directive = f"Rewrite H1 to establish immediate clinical relevance: e.g., 'Custom {primary_topic} Treatments in [Location]'"
         h2_directive = f"Add a benefit-driven supporting H2: e.g., 'Restore Comfort and Clinical Balance with Customized {primary_topic}'"
-        copy_direction = f"The content must feature a clear booking CTA above the fold, highlight practitioner experience with '{primary_topic_lower}', and present clear FAQs about benefits and booking."
+        copy_direction = f"The content must feature a clear booking CTA above the fold, highlight practitioner experience with '{primary_topic.lower()}', and present clear FAQs about benefits and booking."
         
     return {
         "title_directive": meta_title_directive,
@@ -767,7 +767,7 @@ if uploaded_file is not None:
                     with col_onpage:
                         st.markdown("#### ✍️ Heading Tag Directives")
                         st.text_area("H1 Heading Target:", value=recs['h1_directive'], key=f"h1_dir_{idx}", height=100)
-                        st.text_area("H2 Subheading Target:", value=recs['h2_dir_{idx}'], value=recs['h2_directive'], key=f"h2_dir_{idx}", height=100)
+                        st.text_area("H2 Subheading Target:", value=recs['h2_directive'], key=f"h2_dir_{idx}", height=100)
                     
                     st.markdown("#### 📝 Editorial & On-Page Content Guidelines")
                     st.info(recs['copy_direction'])
