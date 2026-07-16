@@ -154,6 +154,20 @@ st.markdown("""
         display: inline-block;
         margin-top: 4px;
     }
+
+    /* Ultra-highlighted status banner */
+    .critical-status-highlight {
+        background: linear-gradient(135deg, #ef4444 0%, #991b1b 100%) !important;
+        color: #ffffff !important;
+        padding: 24px;
+        border-radius: 12px;
+        font-weight: bold;
+        font-size: 1.4rem;
+        text-align: center;
+        box-shadow: 0 10px 15px -3px rgba(239, 68, 68, 0.4);
+        margin-bottom: 25px;
+        border: 2px solid #fee2e2;
+    }
     
     .stMarkdown p, .stMarkdown span {
         color: var(--text-color) !important;
@@ -198,12 +212,12 @@ st.markdown("""
 </div>
 """, unsafe_allow_html=True)
 
-# APPLICATION DESCRIPTION (COLLAPSED BY DEFAULT)
+# APPLICATION DESCRIPTION
 with st.expander("📖 View Forensic Capability & Core Functionality (What this app does & finds)", expanded=False):
     st.markdown("""
     ## ⚙️ Forensic Capability & Core Functionality
 
-    This application serves as an automated search intelligence auditor that processes raw, multi-dimensional Google Search Console data structures. It replaces time-consuming spreadsheet lookups with high-precision algorithmic auditing:
+    This application serves as an automated search intelligence auditor that processes raw, multi-dimensional Google Search Console data structures:
 
     * **What it does:** It cleanses, parses, and cross-references multi-dimensional performance sets (Queries and Pages) via a high-precision semantic matching algorithm.
     * **What it finds:**
@@ -376,50 +390,81 @@ def find_best_url_match_precise(query_row, df_pages, max_offset=6.0):
     return best_url if best_url else "Manual GSC Check Required", is_highly_confident
 
 # -------------------------------------------------------------------------
-# BACKEND HELPER: COMPLETE-SENTENCE SEO RECOMMENDATION ENGINE
+# BACKEND HELPER: AUTOMATIC INTENT-AWARE REC ENGINE (BLOG VS. SERVICE PAGE)
 # -------------------------------------------------------------------------
 def generate_seo_recommendations(page_url, keywords):
+    url_lower = page_url.lower()
+    
+    # 1. Detect if the page is a Blog/Informational resource or a Service Page
+    is_blog = any(pattern in url_lower for pattern in ['/blog', '/news', '/article', '/resource', '/post', '/insight', '/learning'])
+    
+    primary_kw = keywords[0].title() if len(keywords) > 0 else "Our Treatments"
+    primary_kw_lower = primary_kw.lower()
+    
+    # Check keyword structure for informational intent modifiers
+    info_modifiers = ['how', 'why', 'what', 'guide', 'tips', 'best', 'causes', 'treatment for', 'timeline', 'swelling', 'recovery']
+    if any(modifier in primary_kw_lower for modifier in info_modifiers):
+        is_blog = True
+        
     clean_topic = page_url.split('/')[-2] if page_url.endswith('/') else page_url.split('/')[-1]
     clean_topic = clean_topic.replace('-', ' ').replace('_', ' ').title()
     if not clean_topic or clean_topic == "":
-        clean_topic = "Treatment"
+        clean_topic = "Guide" if is_blog else "Treatment"
+
+    if is_blog:
+        # ==================== INFORMATIONAL / BLOG TEMPLATE ====================
+        opts_title = [
+            f"{primary_kw}: Expert Guide & What to Expect",
+            f"Understanding {primary_kw} | Safety, Timing & Advice",
+            f"{primary_kw}: Everything You Need to Know",
+            f"Is {primary_kw} Normal? Recovery & Timeline Tips"
+        ]
+        meta_title = next((opt for opt in opts_title if len(opt) <= 60), opts_title[0][:60])
         
-    primary_kw = keywords[0].title() if len(keywords) > 0 else "Our Treatments"
-    secondary_kws = ", ".join([k.lower() for k in keywords[1:3]]) if len(keywords) > 1 else ""
-    
-    # Structural fallback variations strictly under 60 characters (and ending cleanly!)
-    opts_title = [
-        f"{primary_kw} in Oak Brook | Custom Restorative Services",
-        f"{primary_kw} Treatment | Restorative Skincare Specialists",
-        f"Professional {primary_kw} Treatments",
-        f"{primary_kw} Services"
-    ]
-    meta_title = next((opt for opt in opts_title if len(opt) <= 60), opts_title[-1])
+        meta_desc = f"Wondering about {primary_kw_lower}? Read our comprehensive guide detailing recovery, expert tips, and what you can expect from your recovery process."
+        if len(meta_desc) > 160:
+            meta_desc = meta_desc[:157] + "..."
+            
+        h1_tag = f"{primary_kw}"
+        h2_tag = f"Everything You Need to Know About {primary_kw}"
         
-    # Structural fallback descriptions strictly under 160 characters
-    desc_p1 = f"Experience premium {primary_kw.lower()} designed to restore youthful, natural volume."
-    desc_p2 = f" Discover customized {primary_kw.lower()} solutions today."
-    
-    if len(desc_p1 + desc_p2) <= 160:
-        meta_desc = desc_p1 + desc_p2
+        content_blurb = (
+            f"When researching {primary_kw_lower}, understanding the fundamental processes and milestones is critical. "
+            f"Our clinical team outlines key safety details, expected timelines, and practical tips "
+            f"designed to guide you safely through your recovery window."
+        )
+        page_type = "Informational/Blog Post"
     else:
-        meta_desc = desc_p1
+        # ==================== TRANSACTIONAL / SERVICE TEMPLATE ====================
+        opts_title = [
+            f"{primary_kw} in Oak Brook | Custom Restorative Services",
+            f"{primary_kw} Treatment | Restorative Skincare Specialists",
+            f"Professional {primary_kw} Treatments",
+            f"{primary_kw} Services"
+        ]
+        meta_title = next((opt for opt in opts_title if len(opt) <= 60), opts_title[-1])
+            
+        desc_p1 = f"Experience premium {primary_kw_lower} designed to restore youthful, natural volume."
+        desc_p2 = f" Discover customized {primary_kw_lower} solutions today."
+        meta_desc = desc_p1 + desc_p2 if len(desc_p1 + desc_p2) <= 160 else desc_p1
+            
+        h1_tag = f"Natural {primary_kw} Treatments"
+        h2_tag = f"Restore Youthful Volume with Custom {primary_kw}"
         
-    h1_tag = f"Natural {primary_kw} Treatments"
-    h2_tag = f"Restore Youthful Volume with Custom {primary_kw}"
-    
-    content_blurb = (
-        f"If you are seeking professional solutions, our team delivers premier results. "
-        f"We utilize state-of-the-art procedures to personalize your treatment plan, "
-        f"helping you achieve long-lasting improvements in skin quality, symmetry, and overall skin elasticity."
-    )
+        content_blurb = (
+            f"If you are seeking professional solutions, our team delivers premier results. "
+            f"We utilize state-of-the-art procedures to personalize your treatment plan, "
+            f"helping you achieve long-lasting improvements in skin quality, symmetry, and overall skin elasticity."
+        )
+        page_type = "Transactional/Service Page"
     
     return {
         "title": meta_title,
         "desc": meta_desc,
         "h1": h1_tag,
         "h2": h2_tag,
-        "blurb": content_blurb
+        "blurb": content_blurb,
+        "page_type": page_type
     }
 
 def extract_gsc_payload(uploaded_zip):
@@ -458,7 +503,7 @@ if uploaded_file is not None:
         df_q_raw = gsc['Queries'].copy()
         df_p = gsc['Pages'].copy()
         
-        # MULTI-KEYWORD EXCLUSION SYSTEM (Regex OR builder)
+        # MULTI-KEYWORD EXCLUSION SYSTEM
         if BRAND_INPUT:
             exclusions = [x.strip() for x in BRAND_INPUT.split(",") if x.strip()]
             if exclusions:
@@ -494,26 +539,44 @@ if uploaded_file is not None:
             *This diagnostic analysis measures the systemic stability of the organic profile. By evaluating global ratios of decaying keywords against ascending terms, it assesses whether traffic contractions point toward site-wide algorithmic suppression or minor seasonal turbulence.*
             """)
             
+            # HIGHLIGHTED SYSTEMIC WARNING BANNER
             if core_hit_score > 65.0:
-                st.markdown(f"""<div class="directive-card danger"><div class="directive-title">🚨 Systemic Algorithmic Suppression Flagged ({core_hit_score}% Probability)</div></div>""", unsafe_allow_html=True)
+                st.markdown(f"""
+                <div class="critical-status-highlight">
+                    🚨 SYSTEMIC ALGORITHMIC SUPPRESSION FLAGGED ({core_hit_score}% PROBABILITY)
+                    <div style="font-size: 0.95rem; font-weight: normal; margin-top: 8px; color: #fee2e2;">
+                        This site is experiencing a lopsided site-wide decline. Priority technical and content-level fixes are recommended.
+                    </div>
+                </div>
+                """, unsafe_allow_html=True)
             else:
-                st.markdown(f"""<div class="directive-card success"><div class="directive-title">✅ No Site-Wide Algorithmic Penalty Detected ({core_hit_score}% Probability)</div></div>""", unsafe_allow_html=True)
+                st.markdown(f"""
+                <div class="directive-card success" style="border-left-width: 8px;">
+                    <div class="directive-title" style="color: #047857 !important; font-size: 1.3rem;">✅ Stable Organic Profile ({core_hit_score}% Core Impact Score)</div>
+                    <div class="directive-text">No systemic, site-wide algorithmic penalties detected. Keyword fluctuations are normal and healthy.</div>
+                </div>
+                """, unsafe_allow_html=True)
             
-            # --- NEW SIMPLIFIED DETAILED EXPLANATION CARD ---
+            # MATHEMATICAL FORMULA CARD
+            st.markdown("### 🧮 How is this score calculated? (The Math)")
             st.markdown("""
-            ### 💡 What does this score actually mean? (Simple Explanation)
+            The engine groups all keyword performance changes on your site and applies a weighted volatility equation.
+            """)
+            st.latex(r"\text{Core Hit Score} = \left( \frac{\sum \text{Clicks Lost across Decaying Queries}}{\sum \text{Clicks Lost} + \sum \text{Clicks Gained}} \right) \times 100")
             
-            Think of this score as a **site-wide organic health check**. Instead of just looking at your total traffic drops, this checker analyzes the **overall trend balance** across all your ranking keywords.
+            st.markdown("""
+            ### 💡 Understanding the Score in Simple Words
             
-            #### 1. How is this score calculated?
-            When Google updates its algorithm, thousands of your keywords will move up or down. The tool groups all these changes:
-            * **Losing Keywords:** We add up all lost clicks across queries that dropped.
-            * **Gaining Keywords:** We add up all gained clicks across queries that grew.
-            * **The Ratio:** We calculate the percentage of total movement that is negative. For example, if **84.2%** of all moving keywords on your site are dropping, your score is **84.2%**.
+            Think of this score as a **site-wide organic health balance sheet**. Instead of just looking at whether total traffic went up or down, this engine looks at **how many individual keywords are shrinking vs. growing**.
             
-            #### 2. Why is a score above 65% a warning?
-            * **Under 65% (Healthy Fluctuation):** It is completely normal for some pages to lose clicks due to seasonality, competitor changes, or minor content decay while other pages grow.
-            * **Above 65% (Algorithmic Suppression Warning):** If more than 65% of your keyword movements are drops, it proves that the drop isn't just a localized issue on a single page. It means **Google's core algorithm has likely made a site-wide adjustment** to how it evaluates your brand's authority, trust, or relevance.
+            *   **The Volatility Grouping:**
+                *   **Losing Keywords:** We look at every query that lost clicks and add all those losses together.
+                *   **Gaining Keywords:** We look at every query that gained clicks and add all those wins together.
+                *   **The Balancing Ratio:** We calculate what percentage of the active click movement is negative. If the result is **84.2%**, it means **84.2% of all traffic movements on your site are drops**.
+                
+            *   **Why is 65% the threshold?**
+                *   **Below 65% (Healthy Fluctuation):** It is perfectly natural for a few pages to drop while other pages grow because of seasonality, local competition, or minor content decay.
+                *   **Above 65% (Algorithmic Suppression Warning):** If more than 65% of your keyword movements are drops simultaneously, it is statistically impossible for this to be a "local page issue" or minor seasonal trend. It indicates **Google's core algorithm has modified how it evaluates your site-wide authority, trust, or quality signals**.
             
             ---
             """)
@@ -649,13 +712,11 @@ if uploaded_file is not None:
                             *   🔗 **Target Landing Page URL:** `{mapped_url}` {badge}
                         """, unsafe_allow_html=True)
 
-        # =========================================================================
-        # === TAB 6: EXECUTION BLUEPRINT (UPGRADED GLOBAL CLICK DECAY ANALYSIS) ===
-        # =========================================================================
+        # === TAB 6: EXECUTION BLUEPRINT ===
         with tab6:
             st.markdown("## 📋 Priority Implementation & Custom SEO Blueprint")
             st.markdown("""
-            *This dashboard isolates top-decaying URLs by scanning **all GSC keywords** to sum click drops globally. Only the pages with the heaviest losses (e.g., -50, -100+) are surface-targeted.*
+            *This diagnostic blueprint aggregates click decay across **all of your site's target queries** to surface your highest-exposure landing pages. It evaluates the structure of each URL and query set to dynamically propose tailored metadata and structured header suggestions matching page intent.*
             """)
             
             priority_pages_map = {}
@@ -680,13 +741,17 @@ if uploaded_file is not None:
             if sorted_priority_pages:
                 for idx, (url, details) in enumerate(sorted_priority_pages):
                     kws = details["keywords"][:3]
+                    # Dynamic Intent Engine is invoked here (swaps copy styles if blog/article patterns match)
                     recs = generate_seo_recommendations(url, kws)
                     
                     st.markdown(f"""
                     <div class="directive-card danger" style="margin-top: 25px;">
                         <span class="warning-tag" style="background-color: #ef4444; color: #ffffff;">🚨 ACTION REQUIRED: HIGH LOSS FOCUS PAGE #{idx+1}</span>
                         <div class="directive-title" style="margin-top: 10px;">URL: <a href="{url}" target="_blank" style="color: #60a5fa;">{url}</a></div>
-                        <p style="margin: 0; font-size: 0.95rem;"><b>Cumulative Click Decay:</b> <span style="color:#ef4444; font-weight:bold;">-{int(details['loss'])} clicks</span> across targeted keywords</p>
+                        <p style="margin: 0; font-size: 0.95rem;">
+                            <b>Cumulative Click Decay:</b> <span style="color:#ef4444; font-weight:bold;">-{int(details['loss'])} clicks</span> across targeted keywords<br>
+                            <b>Detected Intent Profile:</b> <span style="background-color: #2563eb; color: #ffffff; padding: 2px 6px; border-radius: 4px; font-size: 0.8rem; font-weight: bold;">{recs['page_type']}</span>
+                        </p>
                     </div>
                     """, unsafe_allow_html=True)
                     
