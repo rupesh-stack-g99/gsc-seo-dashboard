@@ -168,6 +168,18 @@ st.markdown("""
         margin-bottom: 25px;
         border: 2px solid #fee2e2;
     }
+
+    /* Compact Note/Explanation Box for Tab 1 */
+    .formula-explanation-box {
+        background-color: var(--secondary-background-color);
+        border-left: 4px solid #6366f1;
+        padding: 15px;
+        border-radius: 6px;
+        margin-top: 15px;
+        font-size: 0.88rem;
+        line-height: 1.5;
+        color: var(--text-color);
+    }
     
     .stMarkdown p, .stMarkdown span {
         color: var(--text-color) !important;
@@ -364,7 +376,7 @@ def find_best_url_match_precise(query_row, df_pages, max_offset=6.0):
         token_matches = sum(1 for token in core_nouns if token in url_path)
         score += (token_matches * 5)
         
-        for critical_word in ['kybella', 'earlobe', 'piercing', 'mounjaro', 'tirzepatide', 'botox', 'sculptra']:
+        for critical_word in ['kybella', 'earlobe', 'piercing', 'mounjaro', 'tirzepatide', 'botox', 'sculptra', 'semaglutide', 'ozempic', 'wegovy']:
             if critical_word in query_str:
                 if critical_word in url_path:
                     score += 20  
@@ -395,74 +407,101 @@ def find_best_url_match_precise(query_row, df_pages, max_offset=6.0):
 def generate_seo_recommendations(page_url, keywords):
     url_lower = page_url.lower()
     
-    # 1. Detect if the page is a Blog/Informational resource or a Service Page
+    # 1. Strip the brand and geography artifacts to discover the real topic
+    junk_filters = [
+        '1aesthetic', '1-aesthetic', '1 aesthetic', 'aesthetic', 'clinic', 'dr', 'doctor',
+        'hoboken', 'weehawken', 'nj', 'new-jersey', 'newjersey', 'oak-brook', 'oakbrook', 'illinois', 'il'
+    ]
+    
+    # Identify page target topic, prioritizing keywords list if populated
+    candidate_topic = ""
+    if keywords:
+        # Sort keywords by length/relevance to find the primary treatment phrase
+        clean_kws = []
+        for kw in keywords:
+            kw_cleaned = kw.lower()
+            for junk in junk_filters:
+                kw_cleaned = kw_cleaned.replace(junk, "").strip()
+            if kw_cleaned:
+                clean_kws.append(kw_cleaned)
+        if clean_kws:
+            candidate_topic = clean_kws[0].title()
+
+    if not candidate_topic:
+        # Use URL Slug as fallback, stripping standard directory noise and brand names
+        slug = page_url.split('/')[-2] if page_url.endswith('/') else page_url.split('/')[-1]
+        slug_cleaned = slug.replace('-', ' ').replace('_', ' ').lower()
+        for junk in junk_filters:
+            slug_cleaned = slug_cleaned.replace(junk, "").strip()
+        candidate_topic = slug_cleaned.title() if slug_cleaned else "Medical Treatment"
+    
+    # General cleanup
+    candidate_topic = re.sub(r'\s+', ' ', candidate_topic).strip()
+    
+    # 2. Detect Page Intent Structure
     is_blog = any(pattern in url_lower for pattern in ['/blog', '/news', '/article', '/resource', '/post', '/insight', '/learning'])
-    
-    primary_kw = keywords[0].title() if len(keywords) > 0 else "Our Treatments"
-    primary_kw_lower = primary_kw.lower()
-    
-    # Check keyword structure for informational intent modifiers
-    info_modifiers = ['how', 'why', 'what', 'guide', 'tips', 'best', 'causes', 'treatment for', 'timeline', 'swelling', 'recovery']
-    if any(modifier in primary_kw_lower for modifier in info_modifiers):
+    info_modifiers = ['how', 'why', 'what', 'guide', 'tips', 'best', 'causes', 'timeline', 'swelling', 'recovery', 'side effects']
+    if any(mod in candidate_topic.lower() for mod in info_modifiers):
         is_blog = True
         
-    clean_topic = page_url.split('/')[-2] if page_url.endswith('/') else page_url.split('/')[-1]
-    clean_topic = clean_topic.replace('-', ' ').replace('_', ' ').title()
-    if not clean_topic or clean_topic == "":
-        clean_topic = "Guide" if is_blog else "Treatment"
+    primary_kw = candidate_topic
+    primary_kw_lower = primary_kw.lower()
 
     if is_blog:
         # ==================== INFORMATIONAL / BLOG TEMPLATE ====================
         opts_title = [
             f"{primary_kw}: Expert Guide & What to Expect",
-            f"Understanding {primary_kw} | Safety, Timing & Advice",
+            f"Understanding {primary_kw} | Safety, Timeline & Advice",
             f"{primary_kw}: Everything You Need to Know",
-            f"Is {primary_kw} Normal? Recovery & Timeline Tips"
+            f"Is {primary_kw} Swelling Normal? Recovery Tips"
         ]
         meta_title = next((opt for opt in opts_title if len(opt) <= 60), opts_title[0][:60])
         
-        meta_desc = f"Wondering about {primary_kw_lower}? Read our comprehensive guide detailing recovery, expert tips, and what you can expect from your recovery process."
+        meta_desc = f"Wondering about {primary_kw_lower}? Read our comprehensive medical guide detailing recovery milestones, expert tips, and what to expect."
         if len(meta_desc) > 160:
             meta_desc = meta_desc[:157] + "..."
             
-        h1_tag = f"{primary_kw}"
+        h1_tag = f"{primary_kw} Recovery Guide"
         h2_tag = f"Everything You Need to Know About {primary_kw}"
         
         content_blurb = (
-            f"When researching {primary_kw_lower}, understanding the fundamental processes and milestones is critical. "
-            f"Our clinical team outlines key safety details, expected timelines, and practical tips "
-            f"designed to guide you safely through your recovery window."
+            f"When researching {primary_kw_lower}, understanding expected milestones and timing is critical. "
+            f"Our clinical team outlines safety parameters, treatment timelines, and practical tips "
+            f"designed to guide you safely through your recovery process."
         )
-        page_type = "Informational/Blog Post"
+        page_type = "Informational / Blog Post"
     else:
         # ==================== TRANSACTIONAL / SERVICE TEMPLATE ====================
+        # Dynamic location detection
+        loc_suffix = "Hoboken & Weehawken" if "hoboken" in url_lower or "weehawken" in url_lower else "Oak Brook"
+        
         opts_title = [
-            f"{primary_kw} in Oak Brook | Custom Restorative Services",
-            f"{primary_kw} Treatment | Restorative Skincare Specialists",
-            f"Professional {primary_kw} Treatments",
-            f"{primary_kw} Services"
+            f"{primary_kw} in {loc_suffix} | Custom Medical Treatments",
+            f"{primary_kw} Therapy | Restorative Skincare Specialists",
+            f"Professional {primary_kw} Treatment | 1 Aesthetic",
+            f"{primary_kw} Medical Services"
         ]
         meta_title = next((opt for opt in opts_title if len(opt) <= 60), opts_title[-1])
             
-        desc_p1 = f"Experience premium {primary_kw_lower} designed to restore youthful, natural volume."
-        desc_p2 = f" Discover customized {primary_kw_lower} solutions today."
+        desc_p1 = f"Experience premium {primary_kw_lower} in {loc_suffix} designed to restore balance and beautiful results."
+        desc_p2 = f" Book a consultation today."
         meta_desc = desc_p1 + desc_p2 if len(desc_p1 + desc_p2) <= 160 else desc_p1
             
-        h1_tag = f"Natural {primary_kw} Treatments"
-        h2_tag = f"Restore Youthful Volume with Custom {primary_kw}"
+        h1_tag = f"Professional {primary_kw} Treatment"
+        h2_tag = f"Restore Comfort and Balance with {primary_kw}"
         
         content_blurb = (
-            f"If you are seeking professional solutions, our team delivers premier results. "
+            f"If you are seeking professional solutions, our clinic delivers clinical excellence. "
             f"We utilize state-of-the-art procedures to personalize your treatment plan, "
-            f"helping you achieve long-lasting improvements in skin quality, symmetry, and overall skin elasticity."
+            f"helping you achieve long-lasting improvements and natural-looking outcomes."
         )
-        page_type = "Transactional/Service Page"
+        page_type = "Transactional / Service Page"
     
     return {
-        "title": meta_title,
-        "desc": meta_desc,
-        "h1": h1_tag,
-        "h2": h2_tag,
+        "title": meta_title.strip(),
+        "desc": meta_desc.strip(),
+        "h1": h1_tag.strip(),
+        "h2": h2_tag.strip(),
         "blurb": content_blurb,
         "page_type": page_type
     }
@@ -564,22 +603,17 @@ if uploaded_file is not None:
             """)
             st.latex(r"\text{Core Hit Score} = \left( \frac{\sum \text{Clicks Lost across Decaying Queries}}{\sum \text{Clicks Lost} + \sum \text{Clicks Gained}} \right) \times 100")
             
-            st.markdown("""
-            ### 💡 Understanding the Score in Simple Words
-            
-            Think of this score as a **site-wide organic health balance sheet**. Instead of just looking at whether total traffic went up or down, this engine looks at **how many individual keywords are shrinking vs. growing**.
-            
-            *   **The Volatility Grouping:**
-                *   **Losing Keywords:** We look at every query that lost clicks and add all those losses together.
-                *   **Gaining Keywords:** We look at every query that gained clicks and add all those wins together.
-                *   **The Balancing Ratio:** We calculate what percentage of the active click movement is negative. If the result is **84.2%**, it means **84.2% of all traffic movements on your site are drops**.
-                
-            *   **Why is 65% the threshold?**
-                *   **Below 65% (Healthy Fluctuation):** It is perfectly natural for a few pages to drop while other pages grow because of seasonality, local competition, or minor content decay.
-                *   **Above 65% (Algorithmic Suppression Warning):** If more than 65% of your keyword movements are drops simultaneously, it is statistically impossible for this to be a "local page issue" or minor seasonal trend. It indicates **Google's core algorithm has modified how it evaluates your site-wide authority, trust, or quality signals**.
-            
-            ---
-            """)
+            # COMPACT REDESIGNED NOTE BOX
+            st.markdown(f"""
+            <div class="formula-explanation-box">
+                <b>💡 Understanding the Health Score (Note)</b><br>
+                Instead of simple traffic shifts, this metric evaluates the <i>ratio</i> of decaying queries against expanding queries. 
+                <ul>
+                    <li><b>Score < 65%:</b> Represents expected local SEO volatility or seasonal search trend adjustments.</li>
+                    <li><b>Score > 65%:</b> Strongly implies system-wide algorithmic filtering, where the search engine has re-evaluated core credibility vectors across the entire platform.</li>
+                </ul>
+            </div>
+            """, unsafe_allow_html=True)
 
         # === TAB 2: KEYWORD DECAY ALERTS ===
         with tab2:
