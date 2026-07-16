@@ -180,7 +180,14 @@ st.markdown("""
 # COMPACT SIDEBAR CONFIGURATION
 # =========================================================================
 st.sidebar.markdown("### ⚙️ Forensic Tuning")
-BRAND_TERM = st.sidebar.text_input("Exclude Branded:", value="").lower().strip()
+
+# Changed label to inform user they can comma-separate items
+BRAND_INPUT = st.sidebar.text_input(
+    "Exclude Branded Keywords:", 
+    value="", 
+    placeholder="e.g. brand, clinic, dr smith"
+).lower().strip()
+
 MIN_IMPR_THRESHOLD = st.sidebar.number_input("Min. Impressions:", min_value=1, value=100)
 MAX_CANNIBAL_OFFSET = st.sidebar.slider("Cannibalization Gap:", 1, 15, 6)
 
@@ -415,7 +422,17 @@ if uploaded_file is not None:
         df_q_raw = gsc['Queries'].copy()
         df_p = gsc['Pages'].copy()
         
-        df_q = df_q_raw[~df_q_raw['Queries'].str.lower().str.contains(BRAND_TERM, na=False)].copy() if BRAND_TERM else df_q_raw.copy()
+        # MULTI-KEYWORD EXCLUSION SYSTEM (Regex OR builder)
+        if BRAND_INPUT:
+            # Split comma list, clean out empty spaces, then join with regulatory regex pipe '|'
+            exclusions = [x.strip() for x in BRAND_INPUT.split(",") if x.strip()]
+            if exclusions:
+                regex_pattern = "|".join(exclusions)
+                df_q = df_q_raw[~df_q_raw['Queries'].str.lower().str.contains(regex_pattern, na=False, regex=True)].copy()
+            else:
+                df_q = df_q_raw.copy()
+        else:
+            df_q = df_q_raw.copy()
         
         losing_keys = df_q[df_q['Clicks_Delta'] < 0]
         gaining_keys = df_q[df_q['Clicks_Delta'] > 0]
