@@ -167,21 +167,22 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # =========================================================================
-# APPLICATION DESCRIPTION (WHAT IT DOES & WHAT IT FINDS)
+# APPLICATION DESCRIPTION (COLLAPSED BY DEFAULT)
 # =========================================================================
-st.markdown("""
-## ⚙️ Forensic Capability & Core Functionality
+with st.expander("📖 View Forensic Capability & Core Functionality (What this app does & finds)", expanded=False):
+    st.markdown("""
+    ## ⚙️ Forensic Capability & Core Functionality
 
-This application serves as an automated search intelligence auditor that processes raw, multi-dimensional Google Search Console data structures. It replaces time-consuming spreadsheet lookups with high-precision algorithmic auditing:
+    This application serves as an automated search intelligence auditor that processes raw, multi-dimensional Google Search Console data structures. It replaces time-consuming spreadsheet lookups with high-precision algorithmic auditing:
 
-* **What it does:** It cleanses, parses, and cross-references multi-dimensional performance sets (Queries and Pages) via a high-precision semantic matching algorithm.
-* **What it finds:**
-    * **Systemic Core Update Impact:** Calculates the exact balance of search term decay vs. growth to flag potential sitewide algorithmic updates.
-    * **Hidden Keyword Decay:** Pinpoints queries losing substantial click-through metrics while keeping stable impression scores.
-    * **High-Value Page 1 CTR Gaps:** Detects terms ranking on Page 1 that are performing below natural CTR curves, isolating traffic loss.
-    * **Keyword Cannibalization Clashes:** Flags competing internal landing pages ranking for identical search terms.
-    * **Striking-Distance Quick Wins:** Finds queries hovering on the cusp of page one (positions 11–15) with high impressions.
-""")
+    * **What it does:** It cleanses, parses, and cross-references multi-dimensional performance sets (Queries and Pages) via a high-precision semantic matching algorithm.
+    * **What it finds:**
+        * **Systemic Core Update Impact:** Calculates the exact balance of search term decay vs. growth to flag potential sitewide algorithmic updates.
+        * **Hidden Keyword Decay:** Pinpoints queries losing substantial click-through metrics while keeping stable impression scores.
+        * **High-Value Page 1 CTR Gaps:** Detects terms ranking on Page 1 that are performing below natural CTR curves, isolating traffic loss.
+        * **Keyword Cannibalization Clashes:** Flags competing internal landing pages ranking for identical search terms.
+        * **Striking-Distance Quick Wins:** Finds queries hovering on the cusp of page one (positions 11–15) with high impressions.
+    """)
 
 st.markdown("---")
 
@@ -198,7 +199,7 @@ with cfg_col2:
 with cfg_col3:
     MAX_CANNIBAL_OFFSET = st.slider("Cannibalization Search Space (Pos. Gap):", 1, 15, 6)
 
-# FIXED: Default is False (hides unverified matches). Checking this toggle will show unverified ones.
+# Default: Hidden unverified matches (Only show verified). Checked = show unverified matches.
 SHOW_UNVERIFIED = st.checkbox("🔍 Include unverified matches (low semantic token overlap)", value=False)
 
 st.markdown("---")
@@ -446,7 +447,6 @@ if uploaded_file is not None:
                 for idx, r in decay_queries.reset_index().iterrows():
                     mapped_url, confident = find_best_url_match_precise(r, df_p)
                     
-                    # Logic implementation: Only show if confident, OR if SHOW_UNVERIFIED is enabled.
                     if confident or SHOW_UNVERIFIED:
                         badge = '<span class="verified-tag">✓ Confident Match</span>' if confident else '<span class="warning-tag">⚠️ Low Token Match - Verify URL</span>'
                         st.markdown(f"""
@@ -485,7 +485,6 @@ if uploaded_file is not None:
                 for idx, item in enumerate(sorted_gaps):
                     confident = item['Confident']
                     
-                    # Logic implementation: Only show if confident, OR if SHOW_UNVERIFIED is enabled.
                     if confident or SHOW_UNVERIFIED:
                         badge = '<span class="verified-tag">✓ Confident Match</span>' if confident else '<span class="warning-tag">⚠️ Verification Recommended via GSC</span>'
                         st.markdown(f"""
@@ -559,7 +558,6 @@ if uploaded_file is not None:
                 for idx, r in striking_kws.reset_index().iterrows():
                     mapped_url, confident = find_best_url_match_precise(r, df_p)
                     
-                    # Logic implementation: Only show if confident, OR if SHOW_UNVERIFIED is enabled.
                     if confident or SHOW_UNVERIFIED:
                         badge = '<span class="verified-tag">✓ Confident Match</span>' if confident else '<span class="warning-tag">⚠️ Verify Target Asset</span>'
                         st.markdown(f"""
