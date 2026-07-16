@@ -15,7 +15,7 @@ except ImportError:
     import xlsxwriter
 
 # =========================================================================
-# PREMIUM MIDNIGHT DARK THEME ENGINE
+# PREMIUM MIDNIGHT DARK THEME ENGINE + MAXIMUM WIDTH LAYOUT
 # =========================================================================
 st.set_page_config(
     page_title="GSC Forensic Overview",
@@ -26,10 +26,25 @@ st.set_page_config(
 
 st.markdown("""
     <style>
+    /* Force main app background to deep midnight */
     .stApp { 
         background-color: #0f172a !important; 
     }
     
+    /* COMPACT SIDEBAR & ULTRA-WIDE RESULTS CONTAINER OVERRIDES */
+    [data-testid="stSidebar"] {
+        min-width: 14rem !important;
+        max-width: 14rem !important;
+        width: 14rem !important;
+    }
+    [data-testid="stAppViewBlockContainer"] {
+        max-width: 96% !important;
+        padding-left: 2rem !important;
+        padding-right: 2rem !important;
+        padding-top: 2rem !important;
+    }
+    
+    /* Typography & Headers */
     h1, h2, h3, h4, h5, h6, .directive-header { 
         color: #f8fafc !important; 
         font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
@@ -162,15 +177,15 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # =========================================================================
-# SIDEBAR CONFIGURATION (Moved to Sidebar to save main screen space)
+# COMPACT SIDEBAR CONFIGURATION
 # =========================================================================
 st.sidebar.markdown("### ⚙️ Forensic Tuning")
-BRAND_TERM = st.sidebar.text_input("Exclude Branded Searches:", value="").lower().strip()
-MIN_IMPR_THRESHOLD = st.sidebar.number_input("Min. Impressions Threshold:", min_value=1, value=100)
-MAX_CANNIBAL_OFFSET = st.sidebar.slider("Cannibalization Position Gap:", 1, 15, 6)
+BRAND_TERM = st.sidebar.text_input("Exclude Branded:", value="").lower().strip()
+MIN_IMPR_THRESHOLD = st.sidebar.number_input("Min. Impressions:", min_value=1, value=100)
+MAX_CANNIBAL_OFFSET = st.sidebar.slider("Cannibalization Gap:", 1, 15, 6)
 
 st.sidebar.markdown("---")
-SHOW_UNVERIFIED = st.sidebar.checkbox("🔍 Include unverified URLs (low semantic match)", value=False)
+SHOW_UNVERIFIED = st.sidebar.checkbox("🔍 Include unverified URLs", value=False)
 
 # =========================================================================
 # MAIN CONTENT AREA
