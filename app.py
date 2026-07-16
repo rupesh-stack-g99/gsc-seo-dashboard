@@ -438,7 +438,7 @@ def generate_seo_recommendations(page_url, keywords):
         copy_direction = f"Ensure this article contains clear section subheadings addressing recovery timelines, side effects, and practical checklists for patients researching '{primary_topic.lower()}'."
     else:
         page_type = "Transactional / Service Page"
-        meta_title_directive = f"Action Needed: Rewrite Title to target localized transactional intent for '{primary_topic}'. Format: '{primary_topic} in Hoboken & Oak Brook | Restorative Clinical Treatment' (< 60 chars)."
+        meta_title_directive = f"Action Needed: Rewrite Title to target localized transactional intent for '{primary_topic}'. Format: '{primary_topic} in [Location] | Restorative Clinical Treatment' (< 60 chars)."
         meta_desc_directive = f"Action Needed: Write a localized, high-converting service description for '{primary_topic.lower()}'. Offer a direct CTA like 'Request your consultation today.' (< 160 chars)."
         h1_directive = f"Rewrite H1 to establish immediate clinical relevance: e.g., 'Custom {primary_topic} Treatments in [Location]'"
         h2_directive = f"Add a benefit-driven supporting H2: e.g., 'Restore Comfort and Clinical Balance with Customized {primary_topic}'"
@@ -518,6 +518,12 @@ if uploaded_file is not None:
             "📋 Execution Blueprint"
         ])
 
+        # Prepare variables to pass data to Tab 6 Blueprint
+        decayed_extracted = []
+        ctr_gaps_extracted = []
+        cannibal_clashes_extracted = []
+        striking_extracted = []
+
         # === TAB 1: CORE UPDATE HIT DETECTOR ===
         with tab1:
             st.markdown("## Algorithmic Updates Checker")
@@ -550,7 +556,7 @@ if uploaded_file is not None:
             """)
             st.latex(r"\text{Core Hit Score} = \left( \frac{\sum \text{Clicks Lost across Decaying Queries}}{\sum \text{Clicks Lost} + \sum \text{Clicks Gained}} \right) \times 100")
             
-            # FULLY DETAILED & COMPACTLY BOXED EXPLANATION (RESTORED)
+            # FULLY DETAILED & COMPACTLY BOXED EXPLANATION
             st.markdown(f"""
             <div class="math-explanation-box">
                 <span style="font-weight: 700; color: #4f46e5; font-size: 1.0rem;">💡 Understanding the Mathematical Logic & Ratios</span><br>
@@ -586,6 +592,7 @@ if uploaded_file is not None:
                     mapped_url, confident = find_best_url_match_precise(r, df_p)
                     
                     if confident or SHOW_UNVERIFIED:
+                        decayed_extracted.append({"query": r['Queries'], "clicks_lost": int(r['Clicks_Delta']), "url": mapped_url})
                         badge = '<span class="verified-tag">✓ Confident Match</span>' if confident else '<span class="warning-tag">⚠️ Low Token Match - Verify URL</span>'
                         st.markdown(f"""
                         *   🔴 **Keyword:** `{r['Queries']}`  
@@ -624,6 +631,7 @@ if uploaded_file is not None:
                     confident = item['Confident']
                     
                     if confident or SHOW_UNVERIFIED:
+                        ctr_gaps_extracted.append({"query": item['Keyword'], "loss": item['Click Loss'], "url": item['URL']})
                         badge = '<span class="verified-tag">✓ Confident Match</span>' if confident else '<span class="warning-tag">⚠️ Verification Recommended via GSC</span>'
                         st.markdown(f"""
                         *   🎯 **Keyword:** `{item['Keyword']}` (Rank: **{item['Rank']}**)  
@@ -678,6 +686,7 @@ if uploaded_file is not None:
             if cannibal_list:
                 unique_clashes = {v['Query']: v for v in cannibal_list}.values()
                 for item in list(unique_clashes)[:20]:
+                    cannibal_clashes_extracted.append(item)
                     st.markdown(f"""
                     *   💥 **Query clash on:** `{item['Query']}`  
                         *   🥇 **Primary Page:** `{item['Primary URL']}` (Rank {item['Primary Rank']})  
@@ -697,6 +706,7 @@ if uploaded_file is not None:
                     mapped_url, confident = find_best_url_match_precise(r, df_p)
                     
                     if confident or SHOW_UNVERIFIED:
+                        striking_extracted.append({"query": r['Queries'], "rank": round(r['Position'], 1), "url": mapped_url})
                         badge = '<span class="verified-tag">✓ Confident Match</span>' if confident else '<span class="warning-tag">⚠️ Verify Target Asset</span>'
                         st.markdown(f"""
                         *   🚀 **Keyword:** `{r['Queries']}`  
@@ -723,30 +733,69 @@ if uploaded_file is not None:
                         priority_pages_map[mapped_url]["keywords"].append(r['Queries'])
                     priority_pages_map[mapped_url]["loss"] += abs(r['Clicks_Delta'])
             
-            filtered_pages_map = {url: details for url, details in priority_pages_map.items() if details["loss"] >= 10}
-            
-            if not filtered_pages_map:
-                filtered_pages_map = priority_pages_map
-                
-            sorted_priority_pages = sorted(filtered_pages_map.items(), key=lambda x: x[1]["loss"], reverse=True)[:3]
+            # Sort pages strictly by loss amount
+            sorted_priority_pages = sorted(priority_pages_map.items(), key=lambda x: x[1]["loss"], reverse=True)
             
             if sorted_priority_pages:
-                for idx, (url, details) in enumerate(sorted_priority_pages):
+                for idx, (url, details) in enumerate(sorted_priority_pages[:10]):
                     kws = details["keywords"][:3]
-                    # Blueprints / Action Guidelines
+                    loss_amount = int(details['loss'])
+                    
+                    # Core Directive Generator
                     recs = generate_seo_recommendations(url, kws)
                     
+                    # 50 CLICK THRESHOLD CHECK AND WARNING BANNER
+                    if loss_amount >= 50:
+                        header_badge = '<span class="warning-tag" style="background-color: #ef4444; color: #ffffff; padding: 4px 8px;">🚨 CRITICAL ACTION REQUIRED: SEVERE LOSS FOCUS PAGE</span>'
+                        loss_text = f"<b>Cumulative Click Decay:</b> <span style='color:#ef4444; font-weight:bold;'>-{loss_amount} clicks</span> across targeted keywords"
+                    else:
+                        header_badge = '<span class="warning-tag" style="background-color: #4b5563; color: #f3f4f6; padding: 4px 8px;">ℹ️ NOTICE: UNDER 50-CLICK INVESTIGATION THRESHOLD</span>'
+                        loss_text = f"<b>Cumulative Click Decay:</b> <span style='color:#9ca3af;'>-{loss_amount} clicks</span> (Page drop is under priority focus baseline threshold of 50 clicks)"
+
                     st.markdown(f"""
                     <div class="directive-card danger" style="margin-top: 25px;">
-                        <span class="warning-tag" style="background-color: #ef4444; color: #ffffff;">🚨 ACTION REQUIRED: HIGH LOSS FOCUS PAGE #{idx+1}</span>
+                        {header_badge}
                         <div class="directive-title" style="margin-top: 10px;">URL: <a href="{url}" target="_blank" style="color: #60a5fa;">{url}</a></div>
                         <p style="margin: 0; font-size: 0.95rem;">
-                            <b>Cumulative Click Decay:</b> <span style="color:#ef4444; font-weight:bold;">-{int(details['loss'])} clicks</span> across targeted keywords<br>
-                            <b>Detected Intent Profile:</b> <span style="background-color: #2563eb; color: #ffffff; padding: 2px 6px; border-radius: 4px; font-size: 0.8rem; font-weight: bold;">{recs['page_type']}</span>
+                            {loss_text}
                         </p>
                     </div>
                     """, unsafe_allow_html=True)
                     
+                    # --- HARVEST DATA FROM TABS 2, 3, 4, 5 SPECIFIC TO THIS URL ---
+                    page_alerts = []
+                    
+                    # Tab 2: Keyword Decay Match
+                    matching_decay = [d for d in decayed_extracted if d['url'] == url]
+                    for d in matching_decay:
+                        page_alerts.append(f"⚠️ **Keyword Decay (Tab 2):** `{d['query']}` has dropped by **{abs(d['clicks_lost'])}** clicks. Priority focus required.")
+                    
+                    # Tab 3: CTR Gaps Match
+                    matching_ctr = [c for c in ctr_gaps_extracted if c['url'] == url]
+                    for c in matching_ctr:
+                        page_alerts.append(f"🎯 **CTR Deficit (Tab 3):** `{c['query']}` is ranking on Page 1 but performing below baseline expectancy. Est. Loss: **-{c['loss']}** clicks.")
+                    
+                    # Tab 4: Cannibalization Clashes Match
+                    matching_cannibal = [cb for cb in cannibal_clashes_extracted if cb['Primary URL'] == url or cb['Competing URL'] == url]
+                    for cb in matching_cannibal:
+                        role = "Primary Page 🥇" if cb['Primary URL'] == url else "Competing Page 🥈"
+                        other_url = cb['Competing URL'] if cb['Primary URL'] == url else cb['Primary URL']
+                        page_alerts.append(f"⚔️ **Cannibalization Clash (Tab 4):** Conflicted with `{other_url}` for query `{cb['Query']}`. URL is evaluated as: **{role}**.")
+                        
+                    # Tab 5: Striking Distance Quick Wins Match
+                    matching_striking = [s for s in striking_extracted if s['url'] == url]
+                    for s in matching_striking:
+                        page_alerts.append(f"🚀 **Striking Distance Target (Tab 5):** `{s['query']}` is lingering at Rank **{s['rank']}**. Elevating title/H1 tags can push this query onto Page 1.")
+                    
+                    # Render harvested diagnostics if any exist
+                    if page_alerts:
+                        st.markdown("<div style='background-color: rgba(245, 158, 11, 0.08); padding: 12px; border-radius: 6px; margin-bottom: 12px; border-left: 3px solid #f59e0b;'>", unsafe_allow_html=True)
+                        st.markdown("**🔍 Cross-Tab Diagnostic Insights Gathered:**")
+                        for alert in page_alerts:
+                            st.markdown(alert)
+                        st.markdown("</div>", unsafe_allow_html=True)
+                    
+                    # --- RENDER EDITORIAL BLUEPRINT ---
                     col_meta, col_onpage = st.columns(2)
                     
                     with col_meta:
@@ -773,6 +822,6 @@ if uploaded_file is not None:
                     st.info(recs['copy_direction'])
                     st.markdown("---")
             else:
-                st.info("No pages with meaningful click drops detected. Your site is currently experiencing stable growth!")
+                st.info("No pages with click drops detected.")
     else:
         st.error("❌ Data formatting processing configuration mismatch.")
