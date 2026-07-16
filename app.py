@@ -243,7 +243,7 @@ for pos in range(11, 101):
     CTR_BENCHMARKS[pos] = round(15.0 / pos, 2)
 
 # =========================================================================
-# DATA CLEANING ENGINE
+# DATA CLEANING ENGINE & BACKEND HELPERS
 # =========================================================================
 def clean_gsc_csv(bytes_data):
     try:
@@ -380,6 +380,56 @@ def find_best_url_match_precise(query_row, df_pages, max_offset=6.0):
             
     return best_url if best_url else "Manual GSC Check Required", is_highly_confident
 
+# -------------------------------------------------------------------------
+# NEW BACKEND HELPER: AUTOMATED CONTENT & METRICS RECOMMENDATIONS ENGINE
+# -------------------------------------------------------------------------
+def generate_seo_recommendations(page_url, keywords):
+    """
+    Programmatically generates targeted Meta Titles, Descriptions, 
+    Headings, and Copy Blurps utilizing the decaying target keywords.
+    """
+    # Grab the folder or last slug of the URL to give the UI a clean page title context
+    clean_topic = page_url.split('/')[-2] if page_url.endswith('/') else page_url.split('/')[-1]
+    clean_topic = clean_topic.replace('-', ' ').replace('_', ' ').title()
+    if not clean_topic or clean_topic == "":
+        clean_topic = "Core Target Page"
+        
+    primary_kw = keywords[0].title() if len(keywords) > 0 else "Our Services"
+    secondary_kws = ", ".join([k.lower() for k in keywords[1:3]]) if len(keywords) > 1 else ""
+    
+    # 1. Meta Title (Enforces ideal ~50-60 character standard)
+    meta_title = f"{primary_kw} Services - {clean_topic}"
+    if len(meta_title) > 60:
+        meta_title = meta_title[:57] + "..."
+        
+    # 2. Meta Description (Targeting precise ~145-160 character boundary limit)
+    meta_desc = f"Looking for {primary_kw.lower()}? We offer specialized, high-impact strategies tailored for your needs."
+    if secondary_kws:
+        meta_desc += f" Proudly handling {secondary_kws}."
+    meta_desc += " Get started today!"
+    if len(meta_desc) > 160:
+        meta_desc = meta_desc[:157] + "..."
+        
+    # 3. Dynamic Headings
+    h1_tag = f"Specialized {primary_kw}"
+    h2_tag = f"Industry-Leading Results for {primary_kw}"
+    
+    # 4. Copy-paste ready Content Blurb
+    content_blurb = (
+        f"Optimizing your performance starts with target precision. Our dedicated team approaches "
+        f"<b>{primary_kw.lower()}</b> with industry-leading practices to deliver outstanding results. "
+        f"By focusing on specific solutions for {secondary_kws if secondary_kws else primary_kw.lower()}, "
+        f"we ensure your custom strategies are streamlined, efficient, and built for growth."
+    )
+    
+    return {
+        "title": meta_title,
+        "desc": meta_desc,
+        "h1": h1_tag,
+        "h2": h2_tag,
+        "blurb": content_blurb
+    }
+
 def extract_gsc_payload(uploaded_zip):
     results = {}
     try:
@@ -418,7 +468,6 @@ if uploaded_file is not None:
         
         # MULTI-KEYWORD EXCLUSION SYSTEM (Regex OR builder)
         if BRAND_INPUT:
-            # Split comma list, clean out empty spaces, then join with regex pipe '|'
             exclusions = [x.strip() for x in BRAND_INPUT.split(",") if x.strip()]
             if exclusions:
                 regex_pattern = "|".join(exclusions)
@@ -588,12 +637,69 @@ if uploaded_file is not None:
                             *   🔗 **Target Landing Page URL:** `{mapped_url}` {badge}
                         """, unsafe_allow_html=True)
 
-        # === TAB 6: EXECUTION BLUEPRINT ===
+        # =========================================================================
+        # === TAB 6: EXECUTION BLUEPRINT (UPGRADED! PLACED SUGGESTIONS HERE) ===
+        # =========================================================================
         with tab6:
-            st.markdown("## Priority Implementation Blueprint")
+            st.markdown("## 📋 Priority Implementation & Custom SEO Blueprint")
             st.markdown("""
-            *This strategic guide compiles findings into a prioritized action roadmap. High-volume opportunities with confident alignments are given priority to ensure maximum visibility gains.*
+            *This custom roadmap identifies your top-decaying URLs and **automatically designs target optimization suggestions** (Metas, H1, H2, and content patches) to make site implementation faster and easier.*
             """)
-            st.markdown("Proceed with standard internal linking optimization protocols on high-confidence matched elements.")
+            
+            # Map queries to identify priority target URLs automatically
+            priority_pages_map = {}
+            for _, r in decay_queries.head(12).iterrows():
+                mapped_url, confident = find_best_url_match_precise(r, df_p)
+                if mapped_url and mapped_url != "Manual GSC Check Required":
+                    if mapped_url not in priority_pages_map:
+                        priority_pages_map[mapped_url] = {"keywords": [], "loss": 0}
+                    if r['Queries'] not in priority_pages_map[mapped_url]["keywords"]:
+                        priority_pages_map[mapped_url]["keywords"].append(r['Queries'])
+                    priority_pages_map[mapped_url]["loss"] += abs(r['Clicks_Delta'])
+            
+            # Sort mapped assets by total click loss to isolate the top 3 high-priority targets
+            sorted_priority_pages = sorted(priority_pages_map.items(), key=lambda x: x[1]["loss"], reverse=True)[:3]
+            
+            if sorted_priority_pages:
+                for idx, (url, details) in enumerate(sorted_priority_pages):
+                    kws = details["keywords"][:3]
+                    recs = generate_seo_recommendations(url, kws)
+                    
+                    st.markdown(f"""
+                    <div class="directive-card warning" style="margin-top: 25px;">
+                        <span class="warning-tag">🚨 HIGH PRIORITY FOCUS PAGE #{idx+1}</span>
+                        <div class="directive-title" style="margin-top: 10px;">URL: <a href="{url}" target="_blank" style="color: #60a5fa;">{url}</a></div>
+                        <p style="margin: 0; font-size: 0.9rem;"><b>Cumulative Target Click Loss:</b> -{int(details['loss'])} clicks</p>
+                    </div>
+                    """, unsafe_allow_html=True)
+                    
+                    # Columns to present on-page and metadata recommendations Side-by-Side
+                    col_meta, col_onpage = st.columns(2)
+                    
+                    with col_meta:
+                        st.markdown("#### 🔍 Recommended Meta Configuration")
+                        st.text_input(
+                            f"Suggested Meta Title (Char Count: {len(recs['title'])}/60)", 
+                            value=recs['title'], 
+                            key=f"title_{idx}"
+                        )
+                        st.text_area(
+                            f"Suggested Meta Description (Char Count: {len(recs['desc'])}/160)", 
+                            value=recs['desc'], 
+                            key=f"desc_{idx}", 
+                            height=80
+                        )
+                        
+                    with col_onpage:
+                        st.markdown("#### ✍️ Recommended Heading Framework")
+                        st.text_input("Suggested Target H1 Heading:", value=recs['h1'], key=f"h1_{idx}")
+                        st.text_input("Suggested Supporting H2 Heading:", value=recs['h2'], key=f"h2_{idx}")
+                    
+                    # Ready-to-go content patch block
+                    st.markdown("#### 📝 Copy-paste Content Update Block")
+                    st.info(recs['blurb'])
+                    st.markdown("---")
+            else:
+                st.info("No high-decay pages were identified to construct recommendations. Your site trends are currently stable!")
     else:
         st.error("❌ Data formatting processing configuration mismatch.")
