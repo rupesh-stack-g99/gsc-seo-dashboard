@@ -169,16 +169,16 @@ st.markdown("""
         border: 2px solid #fee2e2;
     }
 
-    /* Compact Note/Explanation Box for Tab 1 */
-    .formula-explanation-box {
+    /* Redesigned math explanation box */
+    .math-explanation-box {
         background-color: var(--secondary-background-color);
-        border-left: 4px solid #6366f1;
-        padding: 15px;
+        border-left: 4px solid #4f46e5;
         border-radius: 6px;
-        margin-top: 15px;
+        padding: 16px;
+        margin-top: 20px;
         font-size: 0.88rem;
         line-height: 1.5;
-        color: var(--text-color);
+        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
     }
     
     .stMarkdown p, .stMarkdown span {
@@ -402,107 +402,54 @@ def find_best_url_match_precise(query_row, df_pages, max_offset=6.0):
     return best_url if best_url else "Manual GSC Check Required", is_highly_confident
 
 # -------------------------------------------------------------------------
-# BACKEND HELPER: AUTOMATIC INTENT-AWARE REC ENGINE (BLOG VS. SERVICE PAGE)
+# DIRECTIVE-BASED METADATA INSTRUCTION BLUEPRINTS (NO BAD TEXT WRITING)
 # -------------------------------------------------------------------------
 def generate_seo_recommendations(page_url, keywords):
     url_lower = page_url.lower()
     
-    # 1. Strip the brand and geography artifacts to discover the real topic
+    # Strip basic geography or brand structures to extract target topic parameters
     junk_filters = [
-        '1aesthetic', '1-aesthetic', '1 aesthetic', 'aesthetic', 'clinic', 'dr', 'doctor',
-        'hoboken', 'weehawken', 'nj', 'new-jersey', 'newjersey', 'oak-brook', 'oakbrook', 'illinois', 'il'
+        '1aesthetic', '1-aesthetic', 'aesthetic', 'clinic', 'dr', 'doctor',
+        'hoboken', 'weehawken', 'nj', 'new-jersey', 'newjersey', 'oak-brook', 'oakbrook'
     ]
     
-    # Identify page target topic, prioritizing keywords list if populated
-    candidate_topic = ""
-    if keywords:
-        # Sort keywords by length/relevance to find the primary treatment phrase
-        clean_kws = []
-        for kw in keywords:
-            kw_cleaned = kw.lower()
-            for junk in junk_filters:
-                kw_cleaned = kw_cleaned.replace(junk, "").strip()
-            if kw_cleaned:
-                clean_kws.append(kw_cleaned)
-        if clean_kws:
-            candidate_topic = clean_kws[0].title()
-
-    if not candidate_topic:
-        # Use URL Slug as fallback, stripping standard directory noise and brand names
-        slug = page_url.split('/')[-2] if page_url.endswith('/') else page_url.split('/')[-1]
-        slug_cleaned = slug.replace('-', ' ').replace('_', ' ').lower()
+    clean_kws = []
+    for kw in keywords:
+        kw_cleaned = kw.lower()
         for junk in junk_filters:
-            slug_cleaned = slug_cleaned.replace(junk, "").strip()
-        candidate_topic = slug_cleaned.title() if slug_cleaned else "Medical Treatment"
+            kw_cleaned = kw_cleaned.replace(junk, "").strip()
+        if kw_cleaned:
+            clean_kws.append(kw_cleaned)
+            
+    primary_topic = clean_kws[0].title() if clean_kws else "Core Treatment"
     
-    # General cleanup
-    candidate_topic = re.sub(r'\s+', ' ', candidate_topic).strip()
-    
-    # 2. Detect Page Intent Structure
+    # Detect Page Intent Structure
     is_blog = any(pattern in url_lower for pattern in ['/blog', '/news', '/article', '/resource', '/post', '/insight', '/learning'])
     info_modifiers = ['how', 'why', 'what', 'guide', 'tips', 'best', 'causes', 'timeline', 'swelling', 'recovery', 'side effects']
-    if any(mod in candidate_topic.lower() for mod in info_modifiers):
+    if any(mod in primary_topic.lower() for mod in info_modifiers):
         is_blog = True
-        
-    primary_kw = candidate_topic
-    primary_kw_lower = primary_kw.lower()
 
     if is_blog:
-        # ==================== INFORMATIONAL / BLOG TEMPLATE ====================
-        opts_title = [
-            f"{primary_kw}: Expert Guide & What to Expect",
-            f"Understanding {primary_kw} | Safety, Timeline & Advice",
-            f"{primary_kw}: Everything You Need to Know",
-            f"Is {primary_kw} Swelling Normal? Recovery Tips"
-        ]
-        meta_title = next((opt for opt in opts_title if len(opt) <= 60), opts_title[0][:60])
-        
-        meta_desc = f"Wondering about {primary_kw_lower}? Read our comprehensive medical guide detailing recovery milestones, expert tips, and what to expect."
-        if len(meta_desc) > 160:
-            meta_desc = meta_desc[:157] + "..."
-            
-        h1_tag = f"{primary_kw} Recovery Guide"
-        h2_tag = f"Everything You Need to Know About {primary_kw}"
-        
-        content_blurb = (
-            f"When researching {primary_kw_lower}, understanding expected milestones and timing is critical. "
-            f"Our clinical team outlines safety parameters, treatment timelines, and practical tips "
-            f"designed to guide you safely through your recovery process."
-        )
         page_type = "Informational / Blog Post"
+        meta_title_directive = f"Action Needed: Rewrite Title to target informative intent for '{primary_topic}'. Avoid clinical booking language. Structure: '[Topic/Question] | Practical Guide & Timeline' (< 60 chars)."
+        meta_desc_directive = f"Action Needed: Write a helpful editorial summary focusing on '{primary_topic_lower := primary_topic.lower()}'. Direct the user to a clinical answer immediately, avoiding transactional CTAs (< 160 chars)."
+        h1_directive = f"Rewrite H1 to address the search intent directly: e.g., 'Understanding {primary_topic}: Recovery, Milestones & Practical Expectations'"
+        h2_directive = f"Use an answer-target H2 structure: e.g., 'How Long Does {primary_topic} Take to Settle?'"
+        copy_direction = f"Ensure this article contains clear section subheadings addressing recovery timelines, side effects, and practical checklists for patients researching '{primary_topic_lower}'."
     else:
-        # ==================== TRANSACTIONAL / SERVICE TEMPLATE ====================
-        # Dynamic location detection
-        loc_suffix = "Hoboken & Weehawken" if "hoboken" in url_lower or "weehawken" in url_lower else "Oak Brook"
-        
-        opts_title = [
-            f"{primary_kw} in {loc_suffix} | Custom Medical Treatments",
-            f"{primary_kw} Therapy | Restorative Skincare Specialists",
-            f"Professional {primary_kw} Treatment | 1 Aesthetic",
-            f"{primary_kw} Medical Services"
-        ]
-        meta_title = next((opt for opt in opts_title if len(opt) <= 60), opts_title[-1])
-            
-        desc_p1 = f"Experience premium {primary_kw_lower} in {loc_suffix} designed to restore balance and beautiful results."
-        desc_p2 = f" Book a consultation today."
-        meta_desc = desc_p1 + desc_p2 if len(desc_p1 + desc_p2) <= 160 else desc_p1
-            
-        h1_tag = f"Professional {primary_kw} Treatment"
-        h2_tag = f"Restore Comfort and Balance with {primary_kw}"
-        
-        content_blurb = (
-            f"If you are seeking professional solutions, our clinic delivers clinical excellence. "
-            f"We utilize state-of-the-art procedures to personalize your treatment plan, "
-            f"helping you achieve long-lasting improvements and natural-looking outcomes."
-        )
         page_type = "Transactional / Service Page"
-    
+        meta_title_directive = f"Action Needed: Rewrite Title to target localized transactional intent for '{primary_topic}'. Format: '{primary_topic} in Hoboken & Oak Brook | Restorative Clinical Treatment' (< 60 chars)."
+        meta_desc_directive = f"Action Needed: Write a localized, high-converting service description for '{primary_topic_lower := primary_topic.lower()}'. Offer a direct CTA like 'Request your consultation today.' (< 160 chars)."
+        h1_directive = f"Rewrite H1 to establish immediate clinical relevance: e.g., 'Custom {primary_topic} Treatments in [Location]'"
+        h2_directive = f"Add a benefit-driven supporting H2: e.g., 'Restore Comfort and Clinical Balance with Customized {primary_topic}'"
+        copy_direction = f"The content must feature a clear booking CTA above the fold, highlight practitioner experience with '{primary_topic_lower}', and present clear FAQs about benefits and booking."
+        
     return {
-        "title": meta_title.strip(),
-        "desc": meta_desc.strip(),
-        "h1": h1_tag.strip(),
-        "h2": h2_tag.strip(),
-        "blurb": content_blurb,
+        "title_directive": meta_title_directive,
+        "desc_directive": meta_desc_directive,
+        "h1_directive": h1_directive,
+        "h2_directive": h2_directive,
+        "copy_direction": copy_direction,
         "page_type": page_type
     }
 
@@ -603,14 +550,25 @@ if uploaded_file is not None:
             """)
             st.latex(r"\text{Core Hit Score} = \left( \frac{\sum \text{Clicks Lost across Decaying Queries}}{\sum \text{Clicks Lost} + \sum \text{Clicks Gained}} \right) \times 100")
             
-            # COMPACT REDESIGNED NOTE BOX
+            # FULLY DETAILED & COMPACTLY BOXED EXPLANATION (RESTORED)
             st.markdown(f"""
-            <div class="formula-explanation-box">
-                <b>💡 Understanding the Health Score (Note)</b><br>
-                Instead of simple traffic shifts, this metric evaluates the <i>ratio</i> of decaying queries against expanding queries. 
-                <ul>
-                    <li><b>Score < 65%:</b> Represents expected local SEO volatility or seasonal search trend adjustments.</li>
-                    <li><b>Score > 65%:</b> Strongly implies system-wide algorithmic filtering, where the search engine has re-evaluated core credibility vectors across the entire platform.</li>
+            <div class="math-explanation-box">
+                <span style="font-weight: 700; color: #4f46e5; font-size: 1.0rem;">💡 Understanding the Mathematical Logic & Ratios</span><br>
+                <p style="margin-top: 6px; margin-bottom: 8px;">Think of this score as a <b>site-wide organic health balance sheet</b>. Instead of just looking at whether total traffic went up or down, this engine looks at <b>how many individual keywords are shrinking vs. growing</b>.</p>
+                <ul style="margin-top:0; margin-bottom:8px; padding-left:20px;">
+                    <li><b>The Volatility Grouping:</b>
+                        <ul>
+                            <li><b>Losing Keywords:</b> We identify every query on your site that lost clicks over the comparative period and sum those click losses.</li>
+                            <li><b>Gaining Keywords:</b> We identify every query that gained clicks over the same period and sum those wins.</li>
+                        </ul>
+                    </li>
+                    <li><b>The Balancing Ratio:</b> We calculate what percentage of the active click movement is negative. If the result is, for example, <b>84.2%</b>, it means that 84.2% of all organic click volatility across your domain is down.</li>
+                    <li><b>Why 65% is the Threshold:</b> 
+                        <ul>
+                            <li><b>Below 65% (Normal Fluctuation):</b> It is normal for a few pages to drop while others grow due to local competition, mild keyword decay, or seasonality.</li>
+                            <li><b>Above 65% (Algorithmic Warning):</b> If more than 65% of your keyword volatility points downward simultaneously, it is statistically impossible for this to be a local page issue. This suggests <b>Google's core algorithms have updated how they evaluate your sitewide E-E-A-T, quality, or trust metrics</b>.</li>
+                        </ul>
+                    </li>
                 </ul>
             </div>
             """, unsafe_allow_html=True)
@@ -750,7 +708,7 @@ if uploaded_file is not None:
         with tab6:
             st.markdown("## 📋 Priority Implementation & Custom SEO Blueprint")
             st.markdown("""
-            *This diagnostic blueprint aggregates click decay across **all of your site's target queries** to surface your highest-exposure landing pages. It evaluates the structure of each URL and query set to dynamically propose tailored metadata and structured header suggestions matching page intent.*
+            *This diagnostic blueprint aggregates click decay across **all of your site's target queries** to surface your highest-exposure landing pages. It evaluates the structure of each URL and query set to dynamically propose customized metadata optimization rules.*
             """)
             
             priority_pages_map = {}
@@ -775,7 +733,7 @@ if uploaded_file is not None:
             if sorted_priority_pages:
                 for idx, (url, details) in enumerate(sorted_priority_pages):
                     kws = details["keywords"][:3]
-                    # Dynamic Intent Engine is invoked here (swaps copy styles if blog/article patterns match)
+                    # Blueprints / Action Guidelines
                     recs = generate_seo_recommendations(url, kws)
                     
                     st.markdown(f"""
@@ -792,26 +750,27 @@ if uploaded_file is not None:
                     col_meta, col_onpage = st.columns(2)
                     
                     with col_meta:
-                        st.markdown("#### 🔍 Complete Meta Configuration (No Dots/Cutoffs)")
-                        st.text_input(
-                            f"Suggested Meta Title (Char Count: {len(recs['title'])}/60)", 
-                            value=recs['title'], 
-                            key=f"title_{idx}"
+                        st.markdown("#### 🔍 Metadata Refactoring Directives")
+                        st.text_area(
+                            f"Meta Title Directive (Limit: <60 Characters)", 
+                            value=recs['title_directive'], 
+                            key=f"title_dir_{idx}",
+                            height=100
                         )
                         st.text_area(
-                            f"Suggested Meta Description (Char Count: {len(recs['desc'])}/160)", 
-                            value=recs['desc'], 
-                            key=f"desc_{idx}", 
-                            height=80
+                            f"Meta Description Directive (Limit: <160 Characters)", 
+                            value=recs['desc_directive'], 
+                            key=f"desc_dir_{idx}", 
+                            height=100
                         )
                         
                     with col_onpage:
-                        st.markdown("#### ✍️ Complete Heading Framework")
-                        st.text_input("Suggested Target H1 Heading:", value=recs['h1'], key=f"h1_{idx}")
-                        st.text_input("Suggested Supporting H2 Heading:", value=recs['h2'], key=f"h2_{idx}")
+                        st.markdown("#### ✍️ Heading Tag Directives")
+                        st.text_area("H1 Heading Target:", value=recs['h1_directive'], key=f"h1_dir_{idx}", height=100)
+                        st.text_area("H2 Subheading Target:", value=recs['h2_dir_{idx}'], value=recs['h2_directive'], key=f"h2_dir_{idx}", height=100)
                     
-                    st.markdown("#### 📝 Copy-paste Content Update Block")
-                    st.info(recs['blurb'])
+                    st.markdown("#### 📝 Editorial & On-Page Content Guidelines")
+                    st.info(recs['copy_direction'])
                     st.markdown("---")
             else:
                 st.info("No pages with meaningful click drops detected. Your site is currently experiencing stable growth!")
