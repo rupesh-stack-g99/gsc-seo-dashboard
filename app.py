@@ -39,7 +39,7 @@ st.markdown("""
         padding-top: 2rem !important;
     }
     
-    /* Typography & Headers - Dynamically adapt to active theme */
+    /* Typography & Headers */
     h1, h2, h3, h4, h5, h6, .directive-header { 
         color: var(--text-color) !important; 
         font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
@@ -49,7 +49,6 @@ st.markdown("""
         letter-spacing: -0.02em;
     }
     
-    /* Hero banner keeps its distinct dark background so white text is readable in both modes */
     .hero-banner {
         background: linear-gradient(135deg, #1e1b4b 0%, #312e81 100%);
         color: #ffffff !important;
@@ -72,7 +71,6 @@ st.markdown("""
         font-weight: 400;
     }
     
-    /* Directive cards adapt to light/dark system settings automatically */
     .directive-card {
         background-color: var(--secondary-background-color) !important;
         border: 1px solid rgba(128, 128, 128, 0.2) !important;
@@ -113,7 +111,6 @@ st.markdown("""
         font-weight: 600 !important;
     }
 
-    /* Requirement Box adapts seamlessly via transparent background tints */
     .upload-requirements-box {
         background-color: rgba(79, 70, 229, 0.08);
         border: 2px dashed #4f46e5;
@@ -155,7 +152,6 @@ st.markdown("""
         margin-top: 4px;
     }
 
-    /* Ultra-highlighted status banner */
     .critical-status-highlight {
         background: linear-gradient(135deg, #ef4444 0%, #991b1b 100%) !important;
         color: #ffffff !important;
@@ -169,7 +165,6 @@ st.markdown("""
         border: 2px solid #fee2e2;
     }
 
-    /* Redesigned math explanation box */
     .math-explanation-box {
         background-color: var(--secondary-background-color);
         border-left: 4px solid #4f46e5;
@@ -219,7 +214,7 @@ SHOW_UNVERIFIED = st.sidebar.checkbox("🔍 Include unverified URLs", value=Fals
 st.markdown("""
 <div class="hero-banner">
     <h1>🕵️ GSC Forensic Overview & Diagnostic Engine</h1>
-    <p>Algorithmic search monitoring and semantic intent mapping designed to isolate high-value search discrepancies.</p>
+    <p>Algorithmic search monitoring and 3-month performance comparison mapping to isolate high-value search discrepancies.</p>
 </div>
 """, unsafe_allow_html=True)
 
@@ -228,16 +223,13 @@ with st.expander("📖 View Forensic Capability & Core Functionality", expanded=
     st.markdown("""
     ## ⚙️ Forensic Capability & Core Functionality
 
-    This application serves as an automated search intelligence auditor that processes raw, multi-dimensional Google Search Console data structures:
+    This application serves as an automated search intelligence auditor comparing **last 3 months to previous period** GSC performance sets:
 
-    * **What it does:** It cleanses, parses, and cross-references multi-dimensional performance sets (Queries and Pages) via a high-precision semantic matching algorithm.
-    * **What it finds:**
-        * **Systemic Core Update Impact:** Calculates the exact balance of search term decay vs. growth to flag potential sitewide algorithmic updates.
-        * **Hidden Keyword Decay:** Pinpoints queries losing substantial click-through metrics while keeping stable impression scores.
-        * **High-Value Page 1 CTR Gaps:** Detects terms ranking on Page 1 that are performing below natural CTR curves, isolating traffic loss.
-        * **Keyword Cannibalization Clashes:** Flags competing internal landing pages ranking for identical search terms.
-        * **Hidden Growth (Flat Traffic):** Pinpoints pages generating high visibility gains (impressions) without generating corresponding click increases.
-        * **Striking-Distance Quick Wins:** Finds queries hovering on the cusp of page one and beyond (positions 8–30) with high impressions.
+    * **Core Update Diagnostic:** Measures 3-month sitewide volume movement (gains vs. losses) to flag potential algorithmic impact.
+    * **Page 1 CTR Gaps:** Isolates keywords ranking on Page 1 (ranks 1–10) over the last 3 months underperforming expected CTR benchmarks.
+    * **Cannibalization Clashes:** Flags competing internal landing pages matching for identical query intent sets.
+    * **Striking Distance Quick Wins:** Finds queries hovering between position 8 and 30 that expanded visibility or impressions over the last 3 months.
+    * **Execution Blueprint (Top 5):** Aggregates weighted diagnostic threats to highlight the Top 5 priority landing pages needing execution.
     """)
 
 # =========================================================================
@@ -246,18 +238,18 @@ with st.expander("📖 View Forensic Capability & Core Functionality", expanded=
 st.markdown("""
 <div class="upload-requirements-box">
     <h3 style="margin-top:0; color: #4f46e5 !important;">⚠️ GSC Export Requirement Checklist</h3>
-    <p style="margin-bottom:8px; font-size:0.95rem;">To construct comparative trend diagnostics, you must upload the <b>unzipped raw export zip</b> directly generated by Google Search Console:</p>
+    <p style="margin-bottom:8px; font-size:0.95rem;">To construct comparative 3-month diagnostics, upload the <b>unzipped raw ZIP archive</b> exported from Google Search Console:</p>
     <ul style="margin-top:0; margin-bottom:0; font-size:0.95rem; line-height: 1.6;">
         <li>Go to Google Search Console performance menu.</li>
-        <li>Set your Date filter range to: <b>Compare last 3 months to previous period</b>.</li>
-        <li>Click the <b>Export</b> button in the top right corner and choose <b>Download ZIP</b>.</li>
-        <li>Upload that unaltered ZIP archive below.</li>
+        <li>Set Date filter range to: <b>Compare last 3 months to previous period</b>.</li>
+        <li>Click <b>Export</b> in the top right corner and select <b>Download ZIP</b>.</li>
+        <li>Upload that unaltered ZIP file directly below.</li>
     </ul>
 </div>
 """, unsafe_allow_html=True)
 
 uploaded_file = st.file_uploader(
-    "Upload GSC ZIP Archive here:", 
+    "Upload GSC ZIP Archive (3-Month Comparison layout):", 
     type=["zip"], 
     key="gsc_zip_uploader"
 )
@@ -411,14 +403,8 @@ def find_best_url_match_precise(query_row, df_pages, max_offset=6.0):
 def generate_seo_recommendations(page_url, keywords):
     url_lower = page_url.lower()
     
-    geo_words = [
-        'hoboken', 'weehawken', 'nj', 'new-jersey', 'newjersey', 
-        'oak-brook', 'oakbrook', 'il', 'chicago', 'wadena', 'mn', 'minnesota'
-    ]
-    
-    junk_filters = [
-        '1aesthetic', '1-aesthetic', 'aesthetic', 'clinic', 'dr', 'doctor', 'med spa', 'medspa'
-    ]
+    geo_words = ['hoboken', 'weehawken', 'nj', 'new-jersey', 'newjersey', 'oak-brook', 'oakbrook', 'il', 'chicago', 'wadena', 'mn', 'minnesota']
+    junk_filters = ['1aesthetic', '1-aesthetic', 'aesthetic', 'clinic', 'dr', 'doctor', 'med spa', 'medspa']
     
     detected_location = ""
     all_kws_flat = " ".join(keywords).lower()
@@ -430,7 +416,7 @@ def generate_seo_recommendations(page_url, keywords):
     elif 'weehawken' in all_kws_flat:
         detected_location = "Weehawken, NJ"
     elif 'oak brook' in all_kws_flat or 'oakbrook' in all_kws_flat:
-        detected_location = "Sample Brook, IL"
+        detected_location = "Oak Brook, IL"
     else:
         if 'hoboken' in url_lower:
             detected_location = "Hoboken, NJ"
@@ -450,15 +436,13 @@ def generate_seo_recommendations(page_url, keywords):
             kw_cleaned = re.sub(rf'\b{geo}\b', '', kw_cleaned).strip()
         for junk in junk_filters:
             kw_cleaned = re.sub(rf'\b{junk}\b', '', kw_cleaned).strip()
-        
         kw_cleaned = re.sub(r'\s+', ' ', kw_cleaned).strip()
         if kw_cleaned:
             clean_kws.append(kw_cleaned)
             
-    primary_topic = clean_kws[0].title() if clean_kws else "Core Treatment"
-    
+    primary_topic = clean_kws[0].title() if clean_kws else "Core Service"
     if len(primary_topic) < 3:
-        primary_topic = "Clinical Treatment"
+        primary_topic = "Clinical Service"
 
     loc_suffix = f" in {detected_location}" if detected_location else ""
     
@@ -469,18 +453,18 @@ def generate_seo_recommendations(page_url, keywords):
 
     if is_blog:
         page_type = "Informational / Blog Post"
-        meta_title_directive = f"Action Needed: Rewrite Title to target informative intent for '{primary_topic}'. Structure: '[Topic/Question]{loc_suffix} | Practical Guide & Recovery' (< 60 chars)."
-        meta_desc_directive = f"Action Needed: Write a helpful editorial summary focusing on '{primary_topic.lower()}'. Direct the user to a clinical answer immediately (< 160 chars)."
-        h1_directive = f"Rewrite H1 to address the search intent directly: e.g., 'Understanding {primary_topic}: Recovery, Milestones & Practical Expectations'"
-        h2_directive = f"Use an answer-target H2 structure: e.g., 'How Long Does {primary_topic} Take to Settle?'"
-        copy_direction = f"Ensure this article contains clear section subheadings addressing recovery timelines, side effects, and practical checklists for patients researching '{primary_topic.lower()}'."
+        meta_title_directive = f"Action Needed: Rewrite Title to target informative intent for '{primary_topic}'. Structure: '[Topic/Question]{loc_suffix} | Guide & Insights' (< 60 chars)."
+        meta_desc_directive = f"Action Needed: Write a direct editorial answer for '{primary_topic.lower()}'. Focus on clarifying user intent (< 160 chars)."
+        h1_directive = f"Rewrite H1: e.g., 'Understanding {primary_topic}: Recovery, Timeline & Expectations'"
+        h2_directive = f"Add section H2: e.g., 'What to Expect During Your {primary_topic} Journey'"
+        copy_direction = f"Include structured subheadings covering timelines, patient considerations, and key takeaways for '{primary_topic.lower()}'."
     else:
         page_type = "Transactional / Service Page"
-        meta_title_directive = f"Action Needed: Rewrite Title to target localized transactional intent. Format: '{primary_topic}{loc_suffix} | Restorative Clinical Treatment' (< 60 chars)."
-        meta_desc_directive = f"Action Needed: Write a localized, high-converting service description for '{primary_topic.lower()}'. Offer a direct CTA like 'Request your consultation today.' (< 160 chars)."
-        h1_directive = f"Rewrite H1 to establish immediate clinical relevance: e.g., 'Custom {primary_topic} Treatments{loc_suffix}'"
-        h2_directive = f"Add a benefit-driven supporting H2: e.g., 'Restore Comfort and Clinical Balance with Customized {primary_topic}'"
-        copy_direction = f"The content must feature a clear booking CTA above the fold, highlight practitioner experience with '{primary_topic.lower()}', and present clear FAQs about benefits and booking."
+        meta_title_directive = f"Action Needed: Rewrite Title to target localized transactional intent. Format: '{primary_topic}{loc_suffix} | Professional Treatments' (< 60 chars)."
+        meta_desc_directive = f"Action Needed: Write a high-converting description for '{primary_topic.lower()}'. Add a clear CTA like 'Book your consultation today.' (< 160 chars)."
+        h1_directive = f"Rewrite H1: e.g., 'Expert {primary_topic} Services{loc_suffix}'"
+        h2_directive = f"Add supporting H2: e.g., 'Why Choose Our Team for {primary_topic}'"
+        copy_direction = f"Feature a clear booking CTA above the fold, highlight clinical experience with '{primary_topic.lower()}', and answer common conversion FAQs."
         
     return {
         "title_directive": meta_title_directive,
@@ -538,37 +522,33 @@ if uploaded_file is not None:
         else:
             df_q = df_q_raw.copy()
         
-        # Determine if delta health metrics are active (essential for historical core insights)
         has_comparison_metrics = 'Clicks_Delta' in df_q.columns and (df_q['Clicks_Delta'].abs().sum() > 0)
         
+        # STRICT 5-TAB SELECTION AS REQUESTED
         tab_names = [
             "🔍 Core Update Diagnostic",
-            "📉 Keyword Decay Alerts",
             "🎯 Page 1 CTR Gaps",
             "⚔️ Cannibalization Clashes",
-            "📈 Hidden Growth (Flat Traffic)",
             "🚀 Striking Distance Quick Wins",
             "📋 Execution Blueprint (Top 5)"
         ]
         
         tabs = st.tabs(tab_names)
 
-        # Prepare extraction pools to cross-populate Tab 7 (Execution Blueprint)
-        decayed_extracted = []
+        # Priority extraction pools for Execution Blueprint
         ctr_gaps_extracted = []
         cannibal_clashes_extracted = []
-        hidden_growth_extracted = []
         striking_extracted = []
 
-        # === TAB 1: CORE UPDATE HIT DETECTOR ===
+        # === TAB 1: CORE UPDATE DIAGNOSTIC ===
         with tabs[0]:
             st.markdown("## Algorithmic Updates Checker")
             
             if not has_comparison_metrics:
-                st.warning("⚠️ **Comparison Metrics Missing:** The uploaded CSV files do not contain delta/previous comparison columns. Please ensure you exported a 'Compare last 3 months' data layout from GSC.")
+                st.warning("⚠️ **3-Month Comparison Data Missing:** Please ensure you uploaded a ZIP generated using GSC's 'Compare last 3 months to previous period' date filter.")
             else:
                 st.markdown("""
-                *This diagnostic analysis measures the systemic stability of the organic profile. By evaluating global ratios of decaying keywords against ascending terms, it assesses whether traffic contractions point toward site-wide algorithmic suppression or minor seasonal turbulence.*
+                *Measures total volume movement across all keywords comparing the **last 3 months to the previous 3-month period**. It checks whether domain traffic drops indicate site-wide algorithmic penalties or routine keyword movement.*
                 """)
                 losing_keys = df_q[df_q['Clicks_Delta'] < 0]
                 gaining_keys = df_q[df_q['Clicks_Delta'] > 0]
@@ -584,7 +564,7 @@ if uploaded_file is not None:
                     <div class="critical-status-highlight">
                         🚨 SYSTEMIC ALGORITHMIC SUPPRESSION FLAGGED ({core_hit_score}% PROBABILITY)
                         <div style="font-size: 0.95rem; font-weight: normal; margin-top: 8px; color: #fee2e2;">
-                            This site is experiencing a lopsided site-wide decline. Priority technical and content-level fixes are recommended.
+                            Significant sitewide click drops observed across the 3-month comparative window. Immediate technical and content updates required.
                         </div>
                     </div>
                     """, unsafe_allow_html=True)
@@ -592,68 +572,15 @@ if uploaded_file is not None:
                     st.markdown(f"""
                     <div class="directive-card success" style="border-left-width: 8px;">
                         <div class="directive-title" style="color: #047857 !important; font-size: 1.3rem;">✅ Stable Organic Profile ({core_hit_score}% Core Impact Score)</div>
-                        <div class="directive-text">No systemic, site-wide algorithmic penalties detected. Keyword fluctuations are normal and healthy.</div>
+                        <div class="directive-text">No sitewide algorithmic issues detected over the 3-month comparative period.</div>
                     </div>
                     """, unsafe_allow_html=True)
-                
-                st.markdown("### 🧮 How is this score calculated? (The Math)")
-                st.latex(r"\text{Core Hit Score} = \left( \frac{\sum \text{Clicks Lost across Decaying Queries}}{\sum \text{Clicks Lost} + \sum \text{Clicks Gained}} \right) \times 100")
-                
-                st.markdown(f"""
-                <div class="math-explanation-box">
-                    <span style="font-weight: 700; color: #4f46e5; font-size: 1.0rem;">💡 Understanding the Mathematical Logic & Ratios</span><br>
-                    <p style="margin-top: 6px; margin-bottom: 8px;">Think of this score as a <b>site-wide organic health balance sheet</b>. Instead of just looking at whether total traffic went up or down, this engine looks at <b>how many individual keywords are shrinking vs. growing</b>.</p>
-                    <ul style="margin-top:0; margin-bottom:8px; padding-left:20px;">
-                        <li><b>The Volatility Grouping:</b>
-                            <ul>
-                                <li><b>Losing Keywords:</b> We identify every query on your site that lost clicks over the comparative period and sum those click losses.</li>
-                                <li><b>Gaining Keywords:</b> We identify every query that gained clicks over the same period and sum those wins.</li>
-                            </ul>
-                        </li>
-                        <li><b>The Balancing Ratio:</b> We calculate what percentage of the active click movement is negative. If the result is, for example, <b>84.2%</b>, it means that 84.2% of all organic click volatility across your domain is down.</li>
-                        <li><b>Why 65% is the Threshold:</b> 
-                            <ul>
-                                <li><b>Below 65% (Normal Fluctuation):</b> It is normal for a few pages to drop while others grow due to local competition, mild keyword decay, or seasonality.</li>
-                                <li><b>Above 65% (Algorithmic Warning):</b> If more than 65% of your keyword volatility points downward simultaneously, it suggests <b>Google's core algorithms have updated how they evaluate your sitewide E-E-A-T, quality, or trust metrics</b>.</li>
-                            </ul>
-                        </li>
-                    </ul>
-                </div>
-                """, unsafe_allow_html=True)
 
-        # === TAB 2: KEYWORD DECAY ALERTS ===
+        # === TAB 2: PAGE 1 CTR GAPS ===
         with tabs[1]:
-            st.markdown("## Real-time Keyword Decay Alerts")
-            
-            if not has_comparison_metrics:
-                st.warning("⚠️ Comparison metrics missing from GSC upload. Keyword Decay Alerts cannot be parsed.")
-            else:
-                st.markdown("""
-                *This panel exposes critical, high-exposure query drops. It isolates key search metrics where impressions remain highly stable or growing, yet actual click volume drops significantly—signaling a shift in search features, user search layout, or competitor targeting updates.*
-                """)
-                decay_queries = df_q[(df_q['Clicks_Delta'] < 0) & (df_q['Impressions_Delta'] >= 0) & (df_q['Position_Delta'] <= 0.2)].sort_values(by='Clicks_Delta', ascending=True).head(15)
-
-                if not decay_queries.empty:
-                    for idx, r in decay_queries.reset_index().iterrows():
-                        mapped_url, confident = find_best_url_match_precise(r, df_p)
-                        
-                        if confident or SHOW_UNVERIFIED:
-                            decayed_extracted.append({"query": r['Queries'], "clicks_lost": int(r['Clicks_Delta']), "url": mapped_url})
-                            badge = '<span class="verified-tag">✓ Confident Match</span>' if confident else '<span class="warning-tag">⚠️ Low Token Match - Verify URL</span>'
-                            st.markdown(f"""
-                            *   🔴 **Keyword:** `{r['Queries']}`  
-                                *   **Current Rank:** {round(r['Position'], 1)}  
-                                *   **Click Shift:** **{int(r['Clicks_Delta'])} clicks**  
-                                *   🎯 **Best Match URL:** `{mapped_url}` {badge}
-                            """, unsafe_allow_html=True)
-                else:
-                    st.info("No query decay matches found with current filtration parameters.")
-
-        # === TAB 3: HIGH-VALUE CTR GAPS ===
-        with tabs[2]:
-            st.markdown("## High-Value CTR Gaps (Page 1)")
+            st.markdown("## High-Value Page 1 CTR Gaps")
             st.markdown("""
-            *This tracking sheet measures positions on page one (positions 1-10) against performance models. Keywords yielding CTR scores under 70% of standard expectations are flagged, highlighting urgent optimization targets.*
+            *Isolates queries ranking on Page 1 (ranks 1–10) over the last 3 months performing under standard CTR benchmarks, revealing missed click potential.*
             """)
             ctr_gaps_table = []
             for _, row in df_q[(df_q['Position'] <= 10.0) & (df_q['Impressions'] >= MIN_IMPR_THRESHOLD)].iterrows():
@@ -677,28 +604,27 @@ if uploaded_file is not None:
                 sorted_gaps = sorted(ctr_gaps_table, key=lambda x: x['Click Loss'], reverse=True)[:15]
                 for idx, item in enumerate(sorted_gaps):
                     confident = item['Confident']
-                    
                     if confident or SHOW_UNVERIFIED:
                         ctr_gaps_extracted.append({"query": item['Keyword'], "loss": item['Click Loss'], "url": item['URL']})
-                        badge = '<span class="verified-tag">✓ Confident Match</span>' if confident else '<span class="warning-tag">⚠️ Verification Recommended via GSC</span>'
+                        badge = '<span class="verified-tag">✓ Confident Match</span>' if confident else '<span class="warning-tag">⚠️ Low Token Match</span>'
                         st.markdown(f"""
                         *   🎯 **Keyword:** `{item['Keyword']}` (Rank: **{item['Rank']}**)  
-                            *   **Your CTR:** {item['Actual CTR']} *(Expected Benchmark: {item['Target CTR']})*  
-                            *   📉 **Estimated Loss:** **-{item['Click Loss']} Clicks** *(Baseline variant comparison)*
-                            *   🔗 **Target Landing Page:** `{item['URL']}` {badge}
+                            *   **Your CTR:** {item['Actual CTR']} *(Benchmark: {item['Target CTR']})*  
+                            *   📉 **Estimated Clicks Lost:** **-{item['Click Loss']} Clicks**
+                            *   🔗 **Target URL:** `{item['URL']}` {badge}
                         """, unsafe_allow_html=True)
             else:
                 st.info("No high-value Page 1 CTR gaps observed matching criteria.")
 
-        # === TAB 4: CANNIBALIZATION CLASHES ===
-        with tabs[3]:
+        # === TAB 3: CANNIBALIZATION CLASHES ===
+        with tabs[2]:
             st.markdown("## Keyword Cannibalization Clashes")
             st.markdown("""
-            *This tab isolates internal competing assets. When multiple pages rank concurrently for identical search queries, Google's crawling agent splits structural authority across them, diluting individual rankings.*
+            *Detects queries where multiple internal pages compete directly, splitting keyword authority and lowering overall performance.*
             """)
             
             clash_detected = False
-            for _, row in df_q[(df_q['Impressions'] >= MIN_IMPR_THRESHOLD) & (df_q['Position'] <= 20)].head(10).iterrows():
+            for _, row in df_q[(df_q['Impressions'] >= MIN_IMPR_THRESHOLD) & (df_q['Position'] <= 30)].head(15).iterrows():
                 query = row['Queries']
                 query_tokens = [re.sub(r'[^a-z0-9]', '', t) for t in query.lower().split() if len(t) > 3]
                 if len(query_tokens) >= 2:
@@ -711,104 +637,62 @@ if uploaded_file is not None:
                         <div class="directive-card danger">
                             <div class="directive-title">⚔️ Cannibalization Detected: "{query}"</div>
                             <div class="directive-text">
-                                Multiple pages are matching semantic tokens for this intent. Google is splitting ranking weight:
+                                Multiple pages are matching semantic tokens for this query:
                                 <ul style="margin-top:6px; margin-bottom:0;">
-                                    <li><b>Asset A:</b> <code>{page_list[0]}</code></li>
-                                    <li><b>Asset B:</b> <code>{page_list[1]}</code></li>
+                                    <li><b>Page A:</b> <code>{page_list[0]}</code></li>
+                                    <li><b>Page B:</b> <code>{page_list[1]}</code></li>
                                 </ul>
-                                <span class="warning-tag">Recommendation: Canonicalize or Consolidation Action Plan Required</span>
+                                <span class="warning-tag">Recommendation: Consolidate content or update internal linking / canonicals</span>
                             </div>
                         </div>
                         """, unsafe_allow_html=True)
                         
             if not clash_detected:
-                st.success("Excellent! No critical structural keyword cannibalization clashes found in this date range.")
+                st.success("No critical keyword cannibalization clashes found matching current filters.")
 
-        # === TAB 5: HIDDEN GROWTH (FLAT TRAFFIC) ===
-        with tabs[4]:
-            st.markdown("## Pages with Growing Impressions but Flat Traffic")
+        # === TAB 4: STRIKING DISTANCE QUICK WINS (3-MONTH COMPARISON LOGIC) ===
+        with tabs[3]:
+            st.markdown("## Striking Distance Quick Wins (3-Month Comparison)")
             
             if not has_comparison_metrics:
-                st.warning("⚠️ Comparison metrics missing from GSC upload. Hidden Growth analysis cannot be calculated.")
+                st.warning("⚠️ **3-Month Comparison Data Missing:** Upload a GSC export using 'Compare last 3 months to previous period' filter to view comparison metrics.")
             else:
                 st.markdown("""
-                *This diagnostic analysis filters queries experiencing rapid visibility expansions (impressions increasing by $\ge 500$ over the 3-month comparative period) where actual organic clicks have stagnated or dropped ($\le 0$). This identifies prime structural opportunities where search demand is surging but your snippet is failing to attract the user's click.*
+                *Identifies queries currently positioned between **ranks 8 and 30** that show **positive impression growth over the last 3 months compared to the prior 3-month period**. These terms represent fast, high-impact Page 1 wins.*
                 """)
                 
-                flat_growth_queries = df_q[
-                    (df_q['Impressions_Delta'] >= 500) & 
-                    (df_q['Clicks_Delta'] <= 0)
+                # Compare current 3 months against previous 3 months for ranks 8 through 30
+                striking_queries = df_q[
+                    (df_q['Position'] >= 7.5) & 
+                    (df_q['Position'] <= 30.4) & 
+                    (df_q['Impressions_Delta'] > 0)
                 ].sort_values(by='Impressions_Delta', ascending=False).head(15)
                 
-                if not flat_growth_queries.empty:
-                    for _, r in flat_growth_queries.iterrows():
+                if not striking_queries.empty:
+                    for _, r in striking_queries.iterrows():
                         mapped_url, confident = find_best_url_match_precise(r, df_p)
                         if confident or SHOW_UNVERIFIED:
-                            hidden_growth_extracted.append({"query": r['Queries'], "impr_growth": int(r['Impressions_Delta']), "clicks_lost": int(r['Clicks_Delta']), "url": mapped_url})
+                            striking_extracted.append({"query": r['Queries'], "impressions": int(r['Impressions']), "impr_delta": int(r['Impressions_Delta']), "url": mapped_url})
                             badge = '<span class="verified-tag">✓ Confident Match</span>' if confident else '<span class="warning-tag">⚠️ Low Token Match</span>'
                             st.markdown(f"""
-                            <div class="directive-card warning">
-                                <div class="directive-title">📈 High Demand Capture Opportunity: "{r['Queries']}"</div>
-                                <div class="directive-text">
-                                    <ul style="margin-top:6px; margin-bottom:4px;">
-                                        <li><b>Impression Growth (3-Month Demand Surge):</b> <span style="color:#10b981; font-weight:bold;">+{int(r['Impressions_Delta'])} views</span></li>
-                                        <li><b>Click Volatility (Stagnant Traffic):</b> <span style="color:#ef4444; font-weight:bold;">{int(r['Clicks_Delta'])} clicks</span></li>
-                                        <li><b>Current Ranking Position:</b> {round(r['Position'], 1)}</li>
-                                        <li>🔗 <b>Identified Target URL:</b> <code>{mapped_url}</code> {badge}</li>
-                                    </ul>
-                                    <span class="verified-tag" style="background-color: #3b82f6; color: white;">Strategic Priority: Improve CTA layout, Title hooks, or Metadata CTR triggers.</span>
-                                </div>
-                            </div>
+                            *   🚀 **Keyword:** `{r['Queries']}`  
+                                *   **Current Rank:** **{round(r['Position'], 1)}**  
+                                *   **3-Month Impression Growth:** <span style="color:#10b981; font-weight:bold;">+{int(r['Impressions_Delta'])} impressions</span> *(Total: {int(r['Impressions'])})*  
+                                *   🔗 **Target Page URL:** `{mapped_url}` {badge}
                             """, unsafe_allow_html=True)
                 else:
-                    st.info("No queries found showing surging impressions alongside flat/declining traffic under the current exclusions.")
+                    st.info("No striking distance queries with positive 3-month impression growth detected.")
 
-        # === TAB 6: STRIKING DISTANCE QUICK WINS ===
-        with tabs[5]:
-            st.markdown("## Striking Distance Opportunities")
+        # === TAB 5: EXECUTION BLUEPRINT (TOP 5 PRIORITY) ===
+        with tabs[4]:
+            st.markdown("## 📋 Execution Blueprint: Top 5 Priority Action Items")
             st.markdown("""
-            *These queries are positioned on the cusp of high-traffic slots (ranks 8 to 30). With targeted structural enhancements, these assets can be vaulted onto Page 1 to capture incoming clicks.*
-            """)
-            
-            # Adjusted range filter strictly mapping positions 8 to 30
-            striking_queries = df_q[(df_q['Position'] >= 7.5) & (df_q['Position'] <= 30.4)].sort_values(by='Impressions', ascending=False).head(15)
-            
-            if not striking_queries.empty:
-                for _, r in striking_queries.iterrows():
-                    mapped_url, confident = find_best_url_match_precise(r, df_p)
-                    if confident or SHOW_UNVERIFIED:
-                        striking_extracted.append({"query": r['Queries'], "impressions": int(r['Impressions']), "url": mapped_url})
-                        badge = '<span class="verified-tag">✓ Confident Match</span>' if confident else '<span class="warning-tag">⚠️ Low Token Match</span>'
-                        st.markdown(f"""
-                        *   🚀 **Keyword:** `{r['Queries']}`  
-                            *   **Current Rank:** **{round(r['Position'], 1)}**  
-                            *   **Total Monthly Impressions:** **{int(r['Impressions'])}**  
-                            *   🔗 **Target Page URL:** `{mapped_url}` {badge}
-                        """, unsafe_allow_html=True)
-            else:
-                st.info("No striking distance queries detected with the current filters.")
-
-        # === TAB 7: EXECUTION BLUEPRINT (TOP 5 PRIORITY ONLY) ===
-        with tabs[6]:
-            st.markdown("## 📋 Blueprint Engine: Top 5 Priority Action Items Only")
-            st.markdown("""
-            To maximize executive focus, this pipeline automatically runs a **weighted threat score assessment** across all detected issues (click losses, impression spikes, ranking decay, and cannibalization conflicts) to deliver your **Top 5 highest impact priorities** to fix immediately.
+            Automatically aggregates and scores issues across Page 1 CTR gaps, Cannibalization conflicts, and 3-Month Striking Distance gains to deliver your **Top 5 highest priority landing pages**.
             """)
 
-            # Collate tasks by unique URLs and calculate their weighted impact scores
             blueprint_tasks = {}
-            
-            # 1. Decay impact (Direct Click loss value)
-            for item in decayed_extracted:
-                url = item['url']
-                if url == "Manual GSC Check Required": continue
-                if url not in blueprint_tasks:
-                    blueprint_tasks[url] = {"queries": set(), "reasons": set(), "score": 0.0}
-                blueprint_tasks[url]["queries"].add(item['query'])
-                blueprint_tasks[url]["reasons"].add("Keyword Decay")
-                blueprint_tasks[url]["score"] += abs(item['clicks_lost'])
 
-            # 2. CTR Gap impact (Estimated Traffic loss)
+            # 1. Page 1 CTR Gap impact
             for item in ctr_gaps_extracted:
                 url = item['url']
                 if url == "Manual GSC Check Required": continue
@@ -818,7 +702,7 @@ if uploaded_file is not None:
                 blueprint_tasks[url]["reasons"].add("CTR Gap")
                 blueprint_tasks[url]["score"] += item['loss']
 
-            # 3. Cannibalization Clashes (Severe threat multiplier)
+            # 2. Cannibalization Clashes (Heavy threat multiplier)
             for item in cannibal_clashes_extracted:
                 for u_key in ['url_1', 'url_2']:
                     url = item[u_key]
@@ -827,34 +711,23 @@ if uploaded_file is not None:
                         blueprint_tasks[url] = {"queries": set(), "reasons": set(), "score": 0.0}
                     blueprint_tasks[url]["queries"].add(item['query'])
                     blueprint_tasks[url]["reasons"].add("Cannibalization Clash")
-                    blueprint_tasks[url]["score"] += 150.0  # Heavy weight penalty for split authority
+                    blueprint_tasks[url]["score"] += 150.0
 
-            # 4. Hidden Demand Growth (10% weight value for impressions)
-            for item in hidden_growth_extracted:
-                url = item['url']
-                if url == "Manual GSC Check Required": continue
-                if url not in blueprint_tasks:
-                    blueprint_tasks[url] = {"queries": set(), "reasons": set(), "score": 0.0}
-                blueprint_tasks[url]["queries"].add(item['query'])
-                blueprint_tasks[url]["reasons"].add("Hidden Demand Growth")
-                blueprint_tasks[url]["score"] += (item['impr_growth'] * 0.05)
-
-            # 5. Striking Distance (1% weight value for potential impressions)
+            # 3. Striking Distance (3-Month Growth weight)
             for item in striking_extracted:
                 url = item['url']
                 if url == "Manual GSC Check Required": continue
                 if url not in blueprint_tasks:
                     blueprint_tasks[url] = {"queries": set(), "reasons": set(), "score": 0.0}
                 blueprint_tasks[url]["queries"].add(item['query'])
-                blueprint_tasks[url]["reasons"].add("Striking Distance")
-                blueprint_tasks[url]["score"] += (item['impressions'] * 0.01)
+                blueprint_tasks[url]["reasons"].add("3-Month Striking Distance Growth")
+                blueprint_tasks[url]["score"] += (item['impr_delta'] * 0.05)
 
-            # Isolate TOP 5 highest priority items strictly based on cumulative scoring metric
+            # Isolate TOP 5 priority landing pages
             top_5_tasks = dict(sorted(blueprint_tasks.items(), key=lambda x: x[1]['score'], reverse=True)[:5])
 
             if top_5_tasks:
-                # Removed total available task count (" / 19") for maximum focus
-                st.markdown(f"### Isolated **{len(top_5_tasks)}** Unique URLs Requiring On-Page/Technical Adjustments")
+                st.markdown(f"### Isolated **{len(top_5_tasks)}** Priority URLs Requiring Action")
                 
                 export_data = []
                 
@@ -882,13 +755,13 @@ if uploaded_file is not None:
                     st.markdown(f"""
                     <div class="directive-card" style="border-left: 6px solid #ef4444 !important;">
                         <div class="directive-title" style="color: #ef4444 !important;">
-                            🚨 PRIORITY CRITICAL #{idx+1} [Traffic Loss Score: {round(task_data["score"], 1)}]
+                            🚨 PRIORITY CRITICAL #{idx+1} [Impact Score: {round(task_data["score"], 1)}]
                         </div>
                         <div class="directive-title">🔗 URL: <a href="{url}" target="_blank" style="color: #4f46e5; text-decoration: underline;">{url}</a></div>
                         <div class="url-helper-box">
-                            <b>Page Intent Type:</b> {directives["page_type"]}<br>
-                            <b>Aggregated Diagnostic Alerts:</b> <span style="color:#ef4444; font-weight:bold;">{reasons}</span><br>
-                            <b>Associated Target Keywords:</b> {", ".join([f"<code>{k}</code>" for k in keywords])}
+                            <b>Page Type:</b> {directives["page_type"]}<br>
+                            <b>Diagnosed Alert:</b> <span style="color:#ef4444; font-weight:bold;">{reasons}</span><br>
+                            <b>Target Keywords:</b> {", ".join([f"<code>{k}</code>" for k in keywords])}
                         </div>
                         <div style="margin-top: 15px;">
                             <p><b>🏷️ Meta Title Blueprint:</b></p>
@@ -899,18 +772,17 @@ if uploaded_file is not None:
                             <blockquote style="margin: 5px 0; padding: 8px 15px; border-left: 3px solid #10b981; background: var(--secondary-background-color);">{directives["h1_directive"]}</blockquote>
                             <p><b>🏗️ Supporting H2 Blueprint:</b></p>
                             <blockquote style="margin: 5px 0; padding: 8px 15px; border-left: 3px solid #10b981; background: var(--secondary-background-color);">{directives["h2_directive"]}</blockquote>
-                            <p><b>✍️ Copywriting & On-Page Direction:</b></p>
+                            <p><b>✍️ On-Page Copy Blueprint:</b></p>
                             <blockquote style="margin: 5px 0; padding: 8px 15px; border-left: 3px solid #f59e0b; background: var(--secondary-background-color);">{directives["copy_direction"]}</blockquote>
                         </div>
                     </div>
                     """, unsafe_allow_html=True)
                 
-                # Excel Binary Packager
+                # Excel Binary Export
                 df_export = pd.DataFrame(export_data)
                 output = io.BytesIO()
                 with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
                     df_export.to_excel(writer, sheet_name='Top 5 Priority Directives', index=False)
-                    
                     workbook  = writer.book
                     worksheet = writer.sheets['Top 5 Priority Directives']
                     header_format = workbook.add_format({
@@ -918,7 +790,6 @@ if uploaded_file is not None:
                         'fg_color': '#4F46E5', 'font_color': '#FFFFFF', 'border': 1
                     })
                     cell_format = workbook.add_format({'text_wrap': True, 'valign': 'top'})
-                    
                     worksheet.freeze_panes(1, 0)
                     for col_idx, col in enumerate(df_export.columns):
                         worksheet.write(0, col_idx, col, header_format)
@@ -927,12 +798,12 @@ if uploaded_file is not None:
                 st.download_button(
                     label="📥 Download Top 5 Priority Implementation Workbook (Excel)",
                     data=output.getvalue(),
-                    file_name="GSC_SEO_Top_5_Priority_Forensic_Blueprint.xlsx",
+                    file_name="GSC_SEO_Top_5_Priority_Blueprint.xlsx",
                     mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
                 )
             else:
-                st.warning("No dynamic tasks could be assigned. Adjust your filtration parameters on the sidebar to capture lighter signals.")
+                st.warning("No dynamic tasks could be assigned. Adjust your filtration parameters on the sidebar.")
     else:
-        st.error("Uploaded ZIP does not appear to contain matching 'Queries' and 'Pages' CSV structures.")
+        st.error("Uploaded ZIP does not appear to contain matching 'Queries' and 'Pages' CSV files.")
 else:
-    st.info("👋 Upload a raw GSC ZIP archive (3-Month Comparison layout) above to begin running your forensic audit.")
+    st.info("👋 Upload a raw GSC ZIP archive (3-Month Comparison layout) above to begin your audit.")
