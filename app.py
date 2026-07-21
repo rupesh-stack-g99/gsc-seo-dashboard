@@ -514,7 +514,7 @@ if uploaded_file is not None:
         
         has_comparison_metrics = 'Clicks_Delta' in df_q.columns and (df_q['Clicks_Delta'].abs().sum() > 0)
         
-        # STRICT 5-TAB SELECTION AS REQUESTED
+        # STRICT 5-TAB SELECTION
         tab_names = [
             "🔍 Core Update Diagnostic",
             "🎯 Page 1 CTR Gaps",
@@ -630,7 +630,6 @@ if uploaded_file is not None:
                     if len(matching_pages) >= 2:
                         top_competing_pages = matching_pages.head(2)
                         
-                        # Calculate SERP Page numbers for both URLs (1-10 -> Page 1, 11-20 -> Page 2, etc.)
                         pos1 = top_competing_pages.iloc[0]['Position']
                         pos2 = top_competing_pages.iloc[1]['Position']
                         
@@ -646,46 +645,15 @@ if uploaded_file is not None:
                             
                             serp_status = f"⚠️ Direct SERP Collision on Page {serp_page_1} (Ranks {(serp_page_1-1)*10 + 1}–{serp_page_1*10})"
                             
-                            # Build complete HTML string before rendering
+                            # Build table rows single-line without indentation issues
                             table_rows_html = ""
                             for _, p_row in top_competing_pages.iterrows():
-                                table_rows_html += f"""
-                                    <tr style="border-bottom: 1px solid rgba(128,128,128,0.2);">
-                                        <td style="padding: 8px 12px; font-family: monospace;"><code>{p_row['Pages']}</code></td>
-                                        <td style="padding: 8px 12px; font-weight: bold;">{round(p_row['Position'], 1)}</td>
-                                        <td style="padding: 8px 12px;">{int(p_row['Clicks'])}</td>
-                                        <td style="padding: 8px 12px;">{int(p_row['Impressions'])}</td>
-                                    </tr>
-                                """
+                                table_rows_html += f"""<tr style="border-bottom: 1px solid rgba(128,128,128,0.2);"><td style="padding: 8px 12px; font-family: monospace;"><code>{p_row['Pages']}</code></td><td style="padding: 8px 12px; font-weight: bold;">{round(p_row['Position'], 1)}</td><td style="padding: 8px 12px;">{int(p_row['Clicks'])}</td><td style="padding: 8px 12px;">{int(p_row['Impressions'])}</td></tr>"""
 
-                            card_html = f"""
-                            <div class="directive-card warning" style="border-left: 6px solid #f59e0b !important; padding: 16px; margin-bottom: 20px; border-radius: 8px; background-color: rgba(245, 158, 11, 0.05);">
-                                <div class="directive-title" style="font-size: 1.15rem; color: #b45309 !important; font-weight: bold;">
-                                    ⚔️ Clashing Keyword: <code>{query}</code>
-                                </div>
-                                <div class="directive-text" style="margin-bottom: 12px; margin-top: 6px;">
-                                    <b>SERP Collision Status:</b> <span class="warning-tag" style="font-size: 0.85rem; padding: 3px 8px; border-radius: 4px; background: #7c2d12; color: #fdba74;">{serp_status}</span>
-                                </div>
-                                <table style="width:100%; border-collapse: collapse; margin-top: 8px; font-size: 0.9rem; border: 1px solid rgba(128,128,128,0.2);">
-                                    <thead>
-                                        <tr style="background-color: rgba(128,128,128,0.15); text-align: left;">
-                                            <th style="padding: 10px 12px; border-bottom: 2px solid rgba(128,128,128,0.3);">Competing URL Path</th>
-                                            <th style="padding: 10px 12px; border-bottom: 2px solid rgba(128,128,128,0.3);">Rank / Pos</th>
-                                            <th style="padding: 10px 12px; border-bottom: 2px solid rgba(128,128,128,0.3);">Clicks</th>
-                                            <th style="padding: 10px 12px; border-bottom: 2px solid rgba(128,128,128,0.3);">Impressions</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {table_rows_html}
-                                    </tbody>
-                                </table>
-                                <div style="margin-top:12px; font-size:0.85rem;">
-                                    💡 <b>Recommendation:</b> Decide which URL has higher conversion intent. Add a <code>rel="canonical"</code> tag pointing to the primary page, adjust internal anchor links, or consolidate thin content into the stronger ranking page.
-                                </div>
-                            </div>
-                            """
+                            # Construct un-indented HTML block to prevent Streamlit pre/code wrapping
+                            raw_card_html = f"""<div class="directive-card warning" style="border-left: 6px solid #f59e0b !important; padding: 16px; margin-bottom: 20px; border-radius: 8px; background-color: rgba(245, 158, 11, 0.05);"><div class="directive-title" style="font-size: 1.15rem; color: #b45309 !important; font-weight: bold;">⚔️ Clashing Keyword: <code>{query}</code></div><div class="directive-text" style="margin-bottom: 12px; margin-top: 6px;"><b>SERP Collision Status:</b> <span class="warning-tag" style="font-size: 0.85rem; padding: 3px 8px; border-radius: 4px; background: #7c2d12; color: #fdba74;">{serp_status}</span></div><table style="width:100%; border-collapse: collapse; margin-top: 8px; font-size: 0.9rem; border: 1px solid rgba(128,128,128,0.2);"><thead><tr style="background-color: rgba(128,128,128,0.15); text-align: left;"><th style="padding: 10px 12px; border-bottom: 2px solid rgba(128,128,128,0.3);">Competing URL Path</th><th style="padding: 10px 12px; border-bottom: 2px solid rgba(128,128,128,0.3);">Rank / Pos</th><th style="padding: 10px 12px; border-bottom: 2px solid rgba(128,128,128,0.3);">Clicks</th><th style="padding: 10px 12px; border-bottom: 2px solid rgba(128,128,128,0.3);">Impressions</th></tr></thead><tbody>{table_rows_html}</tbody></table><div style="margin-top:12px; font-size:0.85rem;">💡 <b>Recommendation:</b> Decide which URL has higher conversion intent. Add a <code>rel="canonical"</code> tag pointing to the primary page, adjust internal anchor links, or consolidate thin content into the stronger ranking page.</div></div>"""
                             
-                            st.markdown(card_html, unsafe_allow_html=True)
+                            st.markdown(raw_card_html, unsafe_allow_html=True)
                         
             if not clash_detected:
                 st.success("✅ No keyword cannibalization clashes found on the same SERP page matching current filters.")
