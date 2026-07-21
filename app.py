@@ -5,6 +5,7 @@ import io
 import zipfile
 import re
 import math
+from collections import defaultdict
 
 # Ensure Excel/zip dependencies
 try:
@@ -610,11 +611,16 @@ if uploaded_file is not None:
         with tabs[2]:
             st.markdown("## ⚔️ Keyword Cannibalization Clashes")
             st.markdown("""
-            *Detects queries where **2 or more distinct internal URLs** are ranking simultaneously on the **SAME SERP Page** (e.g., both on Page 1 [1–10], both on Page 2 [11–20], etc.).*
+            *Detects queries where **2 or more distinct internal URLs** are ranking simultaneously on the **SAME SERP Page** (e.g., both on Page 1 [1–10], Page 2 [11–20], etc.).*
+            
+            > **Note on Metrics:** The *Rank*, *Clicks*, and *Impressions* shown in the breakdown table represent the **Total Sitewide Performance (Last 3 Months)** for each landing page across all search queries.
             """)
             
             clash_detected = False
             candidate_queries = df_q[(df_q['Impressions'] >= MIN_IMPR_THRESHOLD) & (df_q['Position'] <= 50)].sort_values(by='Impressions', ascending=False)
+            
+            # Dictionary to group clashes by SERP Page number: { serp_page_num: [clash_data_dict, ...] }
+            serp_grouped_clashes = defaultdict(list)
             
             for _, q_row in candidate_queries.iterrows():
                 query = q_row['Queries']
@@ -643,19 +649,39 @@ if uploaded_file is not None:
                             page_list = top_competing_pages['Pages'].tolist()
                             cannibal_clashes_extracted.append({"query": query, "url_1": page_list[0], "url_2": page_list[1]})
                             
-                            serp_status = f"⚠️ Direct SERP Collision on Page {serp_page_1} (Ranks {(serp_page_1-1)*10 + 1}–{serp_page_1*10})"
+                            # Store clash details into the SERP page group
+                            serp_grouped_clashes[serp_page_1].append({
+                                "query": query,
+                                "serp_page": serp_page_1,
+                                "top_competing_pages": top_competing_pages
+                            })
+
+            # DISPLAY GROUPED RESULTS BY SERP PAGE (1 -> 2 -> 3...)
+            if clash_detected:
+                for serp_page in sorted(serp_grouped_clashes.keys()):
+                    clashes_in_page = serp_grouped_clashes[serp_page]
+                    start_rank = (serp_page - 1) * 10 + 1
+                    end_rank = serp_page * 10
+                    
+                    expander_label = f"📄 SERP Page {serp_page} (Ranks {start_rank}–{end_rank}) — [{len(clashes_in_page)} Clashing Queries Found]"
+                    
+                    # Collapsible Dropdown for each SERP Section
+                    with st.expander(expander_label, expanded=(serp_page == 1)):
+                        for clash in clashes_in_page:
+                            query = clash['query']
+                            top_competing_pages = clash['top_competing_pages']
                             
-                            # Build table rows single-line without indentation issues
+                            serp_status = f"⚠️ Direct SERP Collision on Page {serp_page} (Ranks {start_rank}–{end_rank})"
+                            
                             table_rows_html = ""
                             for _, p_row in top_competing_pages.iterrows():
                                 table_rows_html += f"""<tr style="border-bottom: 1px solid rgba(128,128,128,0.2);"><td style="padding: 8px 12px; font-family: monospace;"><code>{p_row['Pages']}</code></td><td style="padding: 8px 12px; font-weight: bold;">{round(p_row['Position'], 1)}</td><td style="padding: 8px 12px;">{int(p_row['Clicks'])}</td><td style="padding: 8px 12px;">{int(p_row['Impressions'])}</td></tr>"""
 
-                            # Construct un-indented HTML block to prevent Streamlit pre/code wrapping
-                            raw_card_html = f"""<div class="directive-card warning" style="border-left: 6px solid #f59e0b !important; padding: 16px; margin-bottom: 20px; border-radius: 8px; background-color: rgba(245, 158, 11, 0.05);"><div class="directive-title" style="font-size: 1.15rem; color: #b45309 !important; font-weight: bold;">⚔️ Clashing Keyword: <code>{query}</code></div><div class="directive-text" style="margin-bottom: 12px; margin-top: 6px;"><b>SERP Collision Status:</b> <span class="warning-tag" style="font-size: 0.85rem; padding: 3px 8px; border-radius: 4px; background: #7c2d12; color: #fdba74;">{serp_status}</span></div><table style="width:100%; border-collapse: collapse; margin-top: 8px; font-size: 0.9rem; border: 1px solid rgba(128,128,128,0.2);"><thead><tr style="background-color: rgba(128,128,128,0.15); text-align: left;"><th style="padding: 10px 12px; border-bottom: 2px solid rgba(128,128,128,0.3);">Competing URL Path</th><th style="padding: 10px 12px; border-bottom: 2px solid rgba(128,128,128,0.3);">Rank / Pos</th><th style="padding: 10px 12px; border-bottom: 2px solid rgba(128,128,128,0.3);">Clicks</th><th style="padding: 10px 12px; border-bottom: 2px solid rgba(128,128,128,0.3);">Impressions</th></tr></thead><tbody>{table_rows_html}</tbody></table><div style="margin-top:12px; font-size:0.85rem;">💡 <b>Recommendation:</b> Decide which URL has higher conversion intent. Add a <code>rel="canonical"</code> tag pointing to the primary page, adjust internal anchor links, or consolidate thin content into the stronger ranking page.</div></div>"""
+                            # Clean, un-indented HTML card with clear 3-month labels
+                            raw_card_html = f"""<div class="directive-card warning" style="border-left: 6px solid #f59e0b !important; padding: 16px; margin-bottom: 20px; border-radius: 8px; background-color: rgba(245, 158, 11, 0.05);"><div class="directive-title" style="font-size: 1.15rem; color: #b45309 !important; font-weight: bold;">⚔️ Clashing Keyword: <code>{query}</code></div><div class="directive-text" style="margin-bottom: 12px; margin-top: 6px;"><b>SERP Collision Status:</b> <span class="warning-tag" style="font-size: 0.85rem; padding: 3px 8px; border-radius: 4px; background: #7c2d12; color: #fdba74;">{serp_status}</span></div><table style="width:100%; border-collapse: collapse; margin-top: 8px; font-size: 0.9rem; border: 1px solid rgba(128,128,128,0.2);"><thead><tr style="background-color: rgba(128,128,128,0.15); text-align: left;"><th style="padding: 10px 12px; border-bottom: 2px solid rgba(128,128,128,0.3);">Competing URL Path</th><th style="padding: 10px 12px; border-bottom: 2px solid rgba(128,128,128,0.3);">Avg Rank (Last 3 Mo.)</th><th style="padding: 10px 12px; border-bottom: 2px solid rgba(128,128,128,0.3);">Total Clicks (Last 3 Mo.)</th><th style="padding: 10px 12px; border-bottom: 2px solid rgba(128,128,128,0.3);">Total Impressions (Last 3 Mo.)</th></tr></thead><tbody>{table_rows_html}</tbody></table><div style="margin-top:12px; font-size:0.85rem;">💡 <b>Recommendation:</b> Decide which URL has higher conversion intent. Add a <code>rel="canonical"</code> tag pointing to the primary page, adjust internal anchor links, or consolidate thin content into the stronger ranking page.</div></div>"""
                             
                             st.markdown(raw_card_html, unsafe_allow_html=True)
-                        
-            if not clash_detected:
+            else:
                 st.success("✅ No keyword cannibalization clashes found on the same SERP page matching current filters.")
 
         # === TAB 4: STRIKING DISTANCE QUICK WINS ===
