@@ -20,7 +20,7 @@ except ImportError:
 # THEME-AGNOSTIC ADAPTIVE ENGINE + MAXIMUM WIDTH LAYOUT
 # =========================================================================
 st.set_page_config(
-    page_title="GSC Forensic Overview (3-Month Comparison)",
+    page_title="GSC Forensic Overview & Cannibalization Engine",
     page_icon="🕵️",
     layout="wide",
     initial_sidebar_state="expanded"
@@ -205,7 +205,7 @@ SHOW_UNVERIFIED = st.sidebar.checkbox("🔍 Include unverified URLs", value=Fals
 st.markdown("""
 <div class="hero-banner">
     <h1>🕵️ GSC Forensic Overview & Diagnostic Engine</h1>
-    <p>Algorithmic search monitoring and 3-month performance comparison mapping to isolate high-value search discrepancies.</p>
+    <p>Algorithmic search monitoring and standard 3-month performance mapping to isolate cannibalization and organic discrepancies.</p>
 </div>
 """, unsafe_allow_html=True)
 
@@ -214,12 +214,12 @@ with st.expander("📖 View Forensic Capability & Core Functionality", expanded=
     st.markdown("""
     ## ⚙️ Forensic Capability & Core Functionality
 
-    This application serves as an automated search intelligence auditor comparing **last 3 months to previous period** GSC performance sets:
+    This application serves as an automated search intelligence auditor for Google Search Console data:
 
-    * **Core Update Diagnostic:** Measures 3-month sitewide volume movement (gains vs. losses) to flag potential algorithmic impact.
-    * **Page 1 CTR Gaps:** Isolates keywords ranking on Page 1 (ranks 1–10) over the last 3 months underperforming expected CTR benchmarks.
-    * **Cannibalization Clashes:** Flags competing internal landing pages matching for identical query intent sets on the **same SERP page**.
-    * **Striking Distance Quick Wins:** Finds queries hovering between position 8 and 30 that expanded visibility or impressions over the last 3 months.
+    * **Cannibalization Clashes:** Flags competing internal landing pages matching for identical query intent sets on the **same SERP page** using normal Last 3 Months GSC exports.
+    * **Core Update Diagnostic:** Measures sitewide volume movement (gains vs. losses) to flag potential algorithmic impact (requires comparison export).
+    * **Page 1 CTR Gaps:** Isolates queries ranking on Page 1 (ranks 1–10) underperforming expected CTR benchmarks.
+    * **Striking Distance Quick Wins:** Finds queries hovering between position 8 and 30 that expanded visibility (requires comparison export).
     * **Execution Blueprint (Top 5):** Aggregates weighted diagnostic threats to highlight the Top 5 priority landing pages needing execution.
     """)
 
@@ -228,19 +228,18 @@ with st.expander("📖 View Forensic Capability & Core Functionality", expanded=
 # =========================================================================
 st.markdown("""
 <div class="upload-requirements-box">
-    <h3 style="margin-top:0; color: #4f46e5 !important;">⚠️ GSC Export Requirement Checklist</h3>
-    <p style="margin-bottom:8px; font-size:0.95rem;">To construct comparative 3-month diagnostics, upload the <b>unzipped raw ZIP archive</b> exported from Google Search Console:</p>
+    <h3 style="margin-top:0; color: #4f46e5 !important;">⚠️ GSC Export Instructions</h3>
+    <p style="margin-bottom:8px; font-size:0.95rem;">Upload the <b>unzipped raw ZIP archive</b> exported directly from Google Search Console:</p>
     <ul style="margin-top:0; margin-bottom:0; font-size:0.95rem; line-height: 1.6;">
-        <li>Go to Google Search Console performance menu.</li>
-        <li>Set Date filter range to: <b>Compare last 3 months to previous period</b>.</li>
-        <li>Click <b>Export</b> in the top right corner and select <b>Download ZIP</b>.</li>
-        <li>Upload that unaltered ZIP file directly below.</li>
+        <li><b>For Cannibalization Clashes:</b> Standard export of the <b>Last 3 Months</b> works directly!</li>
+        <li><b>For Full Core Update & Growth Comparison:</b> Export GSC with date filter <i>Compare last 3 months to previous period</i>.</li>
+        <li>Click <b>Export</b> in GSC (top right corner) and select <b>Download ZIP</b>.</li>
     </ul>
 </div>
 """, unsafe_allow_html=True)
 
 uploaded_file = st.file_uploader(
-    "Upload GSC ZIP Archive (3-Month Comparison layout):", 
+    "Upload GSC ZIP Archive (Standard or Comparative Last 3 Months):", 
     type=["zip"], 
     key="gsc_zip_uploader"
 )
@@ -517,9 +516,9 @@ if uploaded_file is not None:
         
         # STRICT 5-TAB SELECTION
         tab_names = [
+            "⚔️ Cannibalization Clashes (3-Mo Data)",
             "🔍 Core Update Diagnostic",
             "🎯 Page 1 CTR Gaps",
-            "⚔️ Cannibalization Clashes",
             "🚀 Striking Distance Quick Wins",
             "📋 Execution Blueprint (Top 5)"
         ]
@@ -531,84 +530,8 @@ if uploaded_file is not None:
         cannibal_clashes_extracted = []
         striking_extracted = []
 
-        # === TAB 1: CORE UPDATE DIAGNOSTIC ===
+        # === TAB 1: CANNIBALIZATION CLASHES (Uses Standard 3-Mo Data) ===
         with tabs[0]:
-            st.markdown("## Algorithmic Updates Checker")
-            
-            if not has_comparison_metrics:
-                st.warning("⚠️ **3-Month Comparison Data Missing:** Please ensure you uploaded a ZIP generated using GSC's 'Compare last 3 months to previous period' date filter.")
-            else:
-                st.markdown("""
-                *Measures total volume movement across all keywords comparing the **last 3 months to the previous 3-month period**. It checks whether domain traffic drops indicate site-wide algorithmic penalties or routine keyword movement.*
-                """)
-                losing_keys = df_q[df_q['Clicks_Delta'] < 0]
-                gaining_keys = df_q[df_q['Clicks_Delta'] > 0]
-                total_lost_clicks = abs(losing_keys['Clicks_Delta'].sum())
-                total_gained_clicks = gaining_keys['Clicks_Delta'].sum()
-                
-                core_hit_score = 0.0
-                if total_lost_clicks > 0:
-                    core_hit_score = round((total_lost_clicks / (total_lost_clicks + total_gained_clicks + 1e-5)) * 100, 1)
-
-                if core_hit_score > 65.0:
-                    st.markdown(f"""
-                    <div class="critical-status-highlight">
-                        🚨 SYSTEMIC ALGORITHMIC SUPPRESSION FLAGGED ({core_hit_score}% PROBABILITY)
-                        <div style="font-size: 0.95rem; font-weight: normal; margin-top: 8px; color: #fee2e2;">
-                            Significant sitewide click drops observed across the 3-month comparative window. Immediate technical and content updates required.
-                        </div>
-                    </div>
-                    """, unsafe_allow_html=True)
-                else:
-                    st.markdown(f"""
-                    <div class="directive-card success" style="border-left-width: 8px;">
-                        <div class="directive-title" style="color: #047857 !important; font-size: 1.3rem;">✅ Stable Organic Profile ({core_hit_score}% Core Impact Score)</div>
-                        <div class="directive-text">No sitewide algorithmic issues detected over the 3-month comparative period.</div>
-                    </div>
-                    """, unsafe_allow_html=True)
-
-        # === TAB 2: PAGE 1 CTR GAPS ===
-        with tabs[1]:
-            st.markdown("## High-Value Page 1 CTR Gaps")
-            st.markdown("""
-            *Isolates queries ranking on Page 1 (ranks 1–10) over the last 3 months performing under standard CTR benchmarks, revealing missed click potential.*
-            """)
-            ctr_gaps_table = []
-            for _, row in df_q[(df_q['Position'] <= 10.0) & (df_q['Impressions'] >= MIN_IMPR_THRESHOLD)].iterrows():
-                pos = max(1, min(10, int(round(row['Position']))))
-                benchmark = CTR_BENCHMARKS.get(pos, 1.0)
-                if row['CTR'] < (benchmark * 0.7):
-                    projected_clicks = (row['Impressions'] * (benchmark / 100)) - row['Clicks']
-                    if projected_clicks > 5:
-                        mapped_url, confident = find_best_url_match_precise(row, df_p)
-                        ctr_gaps_table.append({
-                            "Keyword": row['Queries'],
-                            "Rank": round(row['Position'], 1),
-                            "Actual CTR": f"{round(row['CTR'], 1)}%",
-                            "Target CTR": f"{round(benchmark, 1)}%",
-                            "Click Loss": int(projected_clicks),
-                            "URL": mapped_url,
-                            "Confident": confident
-                        })
-            
-            if ctr_gaps_table:
-                sorted_gaps = sorted(ctr_gaps_table, key=lambda x: x['Click Loss'], reverse=True)[:15]
-                for idx, item in enumerate(sorted_gaps):
-                    confident = item['Confident']
-                    if confident or SHOW_UNVERIFIED:
-                        ctr_gaps_extracted.append({"query": item['Keyword'], "loss": item['Click Loss'], "url": item['URL']})
-                        badge = '<span class="verified-tag">✓ Confident Match</span>' if confident else '<span class="warning-tag">⚠️ Low Token Match</span>'
-                        st.markdown(f"""
-                        *   🎯 **Keyword:** `{item['Keyword']}` (Rank: **{item['Rank']}**)  
-                            *   **Your CTR:** {item['Actual CTR']} *(Benchmark: {item['Target CTR']})*  
-                            *   📉 **Estimated Clicks Lost:** **-{item['Click Loss']} Clicks**
-                            *   🔗 **Target URL:** `{item['URL']}` {badge}
-                        """, unsafe_allow_html=True)
-            else:
-                st.info("No high-value Page 1 CTR gaps observed matching criteria.")
-
-        # === TAB 3: CANNIBALIZATION CLASHES ===
-        with tabs[2]:
             st.markdown("## ⚔️ Keyword Cannibalization Clashes")
             st.markdown("""
             *Detects queries where **2 or more distinct internal URLs** are ranking simultaneously on the **SAME SERP Page** (e.g., both on Page 1 [1–10], Page 2 [11–20], etc.).*
@@ -684,12 +607,88 @@ if uploaded_file is not None:
             else:
                 st.success("✅ No keyword cannibalization clashes found on the same SERP page matching current filters.")
 
-        # === TAB 4: STRIKING DISTANCE QUICK WINS ===
+        # === TAB 2: CORE UPDATE DIAGNOSTIC (Requires Comparison Export) ===
+        with tabs[1]:
+            st.markdown("## Algorithmic Updates Checker")
+            
+            if not has_comparison_metrics:
+                st.warning("⚠️ **3-Month Comparison File Needed:** To run Core Update diagnostics, upload a GSC ZIP exported using 'Compare last 3 months to previous period'.")
+            else:
+                st.markdown("""
+                *Measures total volume movement across all keywords comparing the **last 3 months to the previous 3-month period**. It checks whether domain traffic drops indicate site-wide algorithmic penalties or routine keyword movement.*
+                """)
+                losing_keys = df_q[df_q['Clicks_Delta'] < 0]
+                gaining_keys = df_q[df_q['Clicks_Delta'] > 0]
+                total_lost_clicks = abs(losing_keys['Clicks_Delta'].sum())
+                total_gained_clicks = gaining_keys['Clicks_Delta'].sum()
+                
+                core_hit_score = 0.0
+                if total_lost_clicks > 0:
+                    core_hit_score = round((total_lost_clicks / (total_lost_clicks + total_gained_clicks + 1e-5)) * 100, 1)
+
+                if core_hit_score > 65.0:
+                    st.markdown(f"""
+                    <div class="critical-status-highlight">
+                        🚨 SYSTEMIC ALGORITHMIC SUPPRESSION FLAGGED ({core_hit_score}% PROBABILITY)
+                        <div style="font-size: 0.95rem; font-weight: normal; margin-top: 8px; color: #fee2e2;">
+                            Significant sitewide click drops observed across the 3-month comparative window. Immediate technical and content updates required.
+                        </div>
+                    </div>
+                    """, unsafe_allow_html=True)
+                else:
+                    st.markdown(f"""
+                    <div class="directive-card success" style="border-left-width: 8px;">
+                        <div class="directive-title" style="color: #047857 !important; font-size: 1.3rem;">✅ Stable Organic Profile ({core_hit_score}% Core Impact Score)</div>
+                        <div class="directive-text">No sitewide algorithmic issues detected over the 3-month comparative period.</div>
+                    </div>
+                    """, unsafe_allow_html=True)
+
+        # === TAB 3: PAGE 1 CTR GAPS ===
+        with tabs[2]:
+            st.markdown("## High-Value Page 1 CTR Gaps")
+            st.markdown("""
+            *Isolates queries ranking on Page 1 (ranks 1–10) over the last 3 months performing under standard CTR benchmarks, revealing missed click potential.*
+            """)
+            ctr_gaps_table = []
+            for _, row in df_q[(df_q['Position'] <= 10.0) & (df_q['Impressions'] >= MIN_IMPR_THRESHOLD)].iterrows():
+                pos = max(1, min(10, int(round(row['Position']))))
+                benchmark = CTR_BENCHMARKS.get(pos, 1.0)
+                if row['CTR'] < (benchmark * 0.7):
+                    projected_clicks = (row['Impressions'] * (benchmark / 100)) - row['Clicks']
+                    if projected_clicks > 5:
+                        mapped_url, confident = find_best_url_match_precise(row, df_p)
+                        ctr_gaps_table.append({
+                            "Keyword": row['Queries'],
+                            "Rank": round(row['Position'], 1),
+                            "Actual CTR": f"{round(row['CTR'], 1)}%",
+                            "Target CTR": f"{round(benchmark, 1)}%",
+                            "Click Loss": int(projected_clicks),
+                            "URL": mapped_url,
+                            "Confident": confident
+                        })
+            
+            if ctr_gaps_table:
+                sorted_gaps = sorted(ctr_gaps_table, key=lambda x: x['Click Loss'], reverse=True)[:15]
+                for idx, item in enumerate(sorted_gaps):
+                    confident = item['Confident']
+                    if confident or SHOW_UNVERIFIED:
+                        ctr_gaps_extracted.append({"query": item['Keyword'], "loss": item['Click Loss'], "url": item['URL']})
+                        badge = '<span class="verified-tag">✓ Confident Match</span>' if confident else '<span class="warning-tag">⚠️ Low Token Match</span>'
+                        st.markdown(f"""
+                        *   🎯 **Keyword:** `{item['Keyword']}` (Rank: **{item['Rank']}**)  
+                            *   **Your CTR:** {item['Actual CTR']} *(Benchmark: {item['Target CTR']})*  
+                            *   📉 **Estimated Clicks Lost:** **-{item['Click Loss']} Clicks**
+                            *   🔗 **Target URL:** `{item['URL']}` {badge}
+                        """, unsafe_allow_html=True)
+            else:
+                st.info("No high-value Page 1 CTR gaps observed matching criteria.")
+
+        # === TAB 4: STRIKING DISTANCE QUICK WINS (Requires Comparison Export) ===
         with tabs[3]:
             st.markdown("## Striking Distance Quick Wins (3-Month Comparison)")
             
             if not has_comparison_metrics:
-                st.warning("⚠️ **3-Month Comparison Data Missing:** Upload a GSC export using 'Compare last 3 months to previous period' filter to view comparison metrics.")
+                st.warning("⚠️ **3-Month Comparison Data Missing:** Upload a GSC export using 'Compare last 3 months to previous period' filter to view comparison growth metrics.")
             else:
                 st.markdown("""
                 *Identifies queries currently positioned between **ranks 8 and 30** that show **positive impression growth over the last 3 months compared to the prior 3-month period**. These terms represent fast, high-impact Page 1 wins.*
@@ -834,4 +833,4 @@ if uploaded_file is not None:
     else:
         st.error("Uploaded ZIP does not appear to contain matching 'Queries' and 'Pages' CSV files.")
 else:
-    st.info("👋 Upload a raw GSC ZIP archive (3-Month Comparison layout) above to begin your audit.")
+    st.info("👋 Upload a raw GSC ZIP archive (Standard or Comparative Last 3 Months layout) above to begin your audit.")
